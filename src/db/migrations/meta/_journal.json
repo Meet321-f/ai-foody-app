@@ -8,6 +8,13 @@
       "when": 1758564401157,
       "tag": "0000_burly_mysterio",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1759061919130,
+      "tag": "0001_new_killraven",
+      "breakpoints": true
     }
   ]
 }
