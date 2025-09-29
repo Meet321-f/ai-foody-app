@@ -1,7 +1,7 @@
 import express from "express";
 import { ENV } from "./config/env.js";
 import { db } from "./config/db.js";
-import { favoritesTable } from "./db/Schema.js";
+import { favoritesTable, recipesTable } from "./db/Schema.js";
 import { and, eq } from "drizzle-orm";
 import job from "./config/cron.js";
 
@@ -72,6 +72,34 @@ app.delete("/api/favorites/:userId/:recipeId", async (req, res) => {
     res.status(200).json({ message: "Favorite removed successfully" });
   } catch (error) {
     console.log("Error removing a favorite", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
+app.post("/api/recipes", async (req, res) => {
+  try {
+    const { title, description, ingredients, instructions, image, cookTime, servings } = req.body;
+
+    if (!title) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const newRecipe = await db
+      .insert(recipesTable)
+      .values({
+        title,
+        description,
+        ingredients,
+        instructions,
+        image,
+        cookTime,
+        servings,
+      })
+      .returning();
+
+    res.status(201).json(newRecipe[0]);
+  } catch (error) {
+    console.log("Error adding recipe", error);
     res.status(500).json({ error: "Something went wrong" });
   }
 });
