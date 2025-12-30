@@ -20,5 +20,26 @@ export const recipesTable = pgTable("recipes", {
   image: text("image"),
   cookTime: text("cook_time"),
   servings: text("servings"),
+  userId: text("user_id"),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const commentsTable = pgTable("comments", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  recipeId: integer("recipe_id").notNull(),
+  text: text("text").notNull(),
+  userName: text("user_name"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const profilesTable = pgTable("profiles", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().unique(),
+  name: text("name"),
+  email: text("email"),
+  bio: text("bio"),
+  profileImage: text("profile_image"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
