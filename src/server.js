@@ -2,9 +2,9 @@ import express from "express";
 import { ENV } from "./config/env.js";
 import { db } from "./config/db.js";
 import { favoritesTable, recipesTable, commentsTable, profilesTable } from "./db/schema.js";
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, gt } from "drizzle-orm";
 import job from "./config/cron.js";
-import { generateRecipe } from "./services/aiService.js";
+import { generateRecipe, getSuggestions, generateFullRecipeData, generateRecipeImage } from "./services/aiService.js";
 import { clerkAuth } from "./services/authService.js";
 
 const app = express();
@@ -230,6 +230,81 @@ app.put("/api/profiles/:userId", async (req, res) => {
 });
 
 // AI endpoints
+app.post("/api/ai/suggestions", clerkAuth, async (req, res) => {
+  try {
+    const { prompt } = req.body;
+    if (!prompt) return res.status(400).json({ error: "Prompt is required" });
+
+    const result = await getSuggestions(prompt);
+    res.status(200).json(result);
+  } catch (error) {
+    console.error("Suggestions Error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
+  try {
+    const { title, context } = req.body;
+    const userId = req.auth.userId;
+
+    if (!title) return res.status(400).json({ error: "Title is required" });
+
+    // 1. Check Daily Limit (3 recipes per day)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const dailyCount = await db
+      .select()
+      .from(recipesTable)
+      .where(
+        and(
+          eq(recipesTable.userId, userId),
+          gt(recipesTable.createdAt, twentyFourHoursAgo)
+        )
+      );
+
+    if (dailyCount.length >= 3) {
+      return res.status(403).json({
+        success: false,
+        error: "Daily limit reached! 👨‍🍳 You can only generate 3 recipes every 24 hours. Please buy premium for unlimited access."
+      });
+    }
+
+    // 2. Generate recipe and image in parallel
+    const [recipeResult, imageResult] = await Promise.all([
+      generateFullRecipeData(title, context),
+      generateRecipeImage(title)
+    ]);
+
+    if (recipeResult.success && recipeResult.data) {
+      // Save to DB
+      const [savedRecipe] = await db.insert(recipesTable).values({
+        title: recipeResult.data.title,
+        description: `Difficulty: ${recipeResult.data.difficulty || "Medium"}. Calories: ${recipeResult.data.calories || "Unknown"}`,
+        ingredients: recipeResult.data.ingredients,
+        instructions: recipeResult.data.instructions,
+        cookTime: recipeResult.data.prepTime || "20 min",
+        servings: "1-2",
+        userId: userId,
+        image: imageResult.imageUrl
+      }).returning();
+
+      res.status(200).json({
+        success: true,
+        data: {
+          ...recipeResult.data,
+          id: savedRecipe.id,
+          image: imageResult.imageUrl
+        }
+      });
+    } else {
+      res.status(500).json({ success: false, error: "Failed to generate recipe data" });
+    }
+  } catch (error) {
+    console.error("Full Recipe Generation Error:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.post("/api/ai/generate-recipe", clerkAuth, async (req, res) => {
   try {
     const { prompt } = req.body;
