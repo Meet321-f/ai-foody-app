@@ -55,9 +55,17 @@ export const generateFullRecipeData = async (title, context = "") => {
         messages: [
           {
             role: "system",
-            content: "You are Chef Foody. Create a detailed recipe based on the title. Return a valid JSON object with: title, ingredients (array), instructions (array), prepTime, calories, difficulty."
+            content: `
+              GENERATE_COMPLETE_RECIPE: 
+              - As per recipe Name and Description, Give me all list of ingredients as ingredient,
+              - emoji icons for each ingredient as icon, quantity as quantity, along with detail step by step recipe as steps,
+              - Total calories as calories (only number), Minutes to cook as cookTime and serving number as serveTo,
+              - realistic image Text prompt as per recipe as imagePrompt.
+              
+              Return a valid JSON object matching this structure.
+            `
           },
-          { role: "user", content: `Create a recipe for: ${title}. Additional context: ${context}` }
+          { role: "user", content: `Create a recipe for: ${title}. ${context}` }
         ],
         response_format: { type: "json_object" }
       })
@@ -67,6 +75,8 @@ export const generateFullRecipeData = async (title, context = "") => {
     if (data.error) throw new Error(`GPT Error: ${data.error.message}`);
 
     const recipe = JSON.parse(data.choices[0].message.content);
+    // Normalize data to ensure it has title if missing from LLM (sometimes LLM omits it if not explicitly asked in JSON structure, though usually wrapper handles it)
+    recipe.title = title; 
     return { success: true, data: recipe };
   } catch (error) {
     console.error("Full Recipe Error:", error);
@@ -75,9 +85,9 @@ export const generateFullRecipeData = async (title, context = "") => {
 };
 
 /**
- * Step 3: Generate a recipe image using Sourceful Riverflow
+ * Step 3: Generate a recipe image using DALL-E 3 (via OpenRouter/OpenAI)
  */
-export const generateRecipeImage = async (title) => {
+export const generateRecipeImage = async (imagePrompt) => {
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -88,11 +98,11 @@ export const generateRecipeImage = async (title) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "sourceful/riverflow-v2-fast-preview",
+        model: "openai/dall-e-3", // Using DALL-E 3 as requested
         messages: [
           {
             role: "user",
-            content: `A professional, mouth-watering food photography shot of ${title}. High resolution, 8k, realistic, gourmet presentation.`
+            content: imagePrompt
           }
         ]
       })
@@ -101,18 +111,17 @@ export const generateRecipeImage = async (title) => {
     const data = await response.json();
     if (data.error) throw new Error(`Image Gen Error: ${data.error.message}`);
 
-    // NOTE: If OpenRouter supports image output modality, it might be in choices[0].message.content or as a URL.
-    // Assuming for now it returns a URL or a Base64 string if configured.
-    // If it's a standard text response, we might need a specific provider.
-    // For now, let's assume we get a URL if the model supports it.
+    // DALL-E 3 on OpenRouter typically returns the URL in the content or as an output. 
+    // Standard OpenRouter chat completion for image models usually embeds the URL in the content.
+    // However, for native DALL-E API it might be different, but OpenRouter normalizes it.
     
     return { 
       success: true, 
-      imageUrl: data.choices[0].message.content || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop" 
+      imageUrl: data.choices[0].message.content
     };
   } catch (error) {
     console.error("Image Generation Error:", error);
-    // Return placeholder on failure so the recipe generation isn't blocked
+    // Return placeholder on failure
     return { 
       success: false, 
       imageUrl: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop" 
