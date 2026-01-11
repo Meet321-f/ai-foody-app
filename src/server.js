@@ -278,28 +278,38 @@ app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
     }
 
     const { 
-      ingredient, // AI returns 'ingredient' array 
-      steps,      // AI returns 'steps' array
+      ingredient, 
+      ingredients,
+      steps,
+      instructions,
       calories, 
       cookTime, 
+      prepTime,
       serveTo, 
-      imagePrompt // The custom prompt for the image
+      servings,
+      imagePrompt 
     } = recipeResult.data;
 
     // Use the generated imagePrompt, or fallback to title if mapped incorrectly
-    const promptForImage = imagePrompt || `${title} food photography`;
+    const promptForImage = imagePrompt || `${recipeResult.data.title || title} food photography`;
     
     // 3. Generate Image
     const imageResult = await generateRecipeImage(promptForImage);
 
+    // Normalize data for DB and Frontend
+    const finalIngredients = ingredient || ingredients || recipeResult.data.ingredients || [];
+    const finalInstructions = steps || instructions || recipeResult.data.instructions || [];
+    const finalCookTime = cookTime || prepTime || "20 min";
+    const finalServings = String(serveTo || servings || "1-2");
+
     // Save to DB
     const [savedRecipe] = await db.insert(recipesTable).values({
-      title: recipeResult.data.title || title, // fallback to initial title
-      description: `Calories: ${calories || "Unknown"}. Serving: ${serveTo || "1-2"}`,
-      ingredients: ingredient || recipeResult.data.ingredients, // fallback if structure varies
-      instructions: steps || recipeResult.data.instructions,
-      cookTime: cookTime || "20 min",
-      servings: serveTo ? String(serveTo) : "1-2",
+      title: recipeResult.data.title || title,
+      description: `Calories: ${calories || "Unknown"}. Serving: ${finalServings}`,
+      ingredients: finalIngredients,
+      instructions: finalInstructions,
+      cookTime: finalCookTime,
+      servings: finalServings,
       userId: userId,
       image: imageResult.imageUrl || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop"
     }).returning();
@@ -309,6 +319,11 @@ app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
       data: {
         ...recipeResult.data,
         id: savedRecipe.id,
+        title: recipeResult.data.title || title,
+        ingredients: finalIngredients,
+        instructions: finalInstructions,
+        prepTime: finalCookTime,
+        calories: calories || "Unknown",
         image: imageResult.imageUrl
       }
     });
