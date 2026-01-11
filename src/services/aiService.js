@@ -1,6 +1,34 @@
 import { ENV } from "../config/env.js";
 
 /**
+ * Helper to robustly parse JSON from AI response, stripping markdown backticks if present.
+ */
+const parseLLMJSON = (content) => {
+  try {
+    // 1. Try direct parse
+    return JSON.parse(content);
+  } catch (e) {
+    try {
+      // 2. Try stripping markdown backticks
+      const match = content.match(/```json\n?([\s\S]*?)\n?```/) || content.match(/```\n?([\s\S]*?)\n?```/);
+      if (match && match[1]) {
+        return JSON.parse(match[1].trim());
+      }
+      // 3. Try finding the first '{' and last '}'
+      const firstBrace = content.indexOf('{');
+      const lastBrace = content.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1) {
+        return JSON.parse(content.substring(firstBrace, lastBrace + 1));
+      }
+      throw e;
+    } catch (innerError) {
+      console.error("Failed to parse LLM JSON. Raw content:", content);
+      throw innerError;
+    }
+  }
+};
+
+/**
  * Step 1: Get recipe suggestions using Mistral Small
  */
 export const getSuggestions = async (prompt) => {
@@ -29,7 +57,7 @@ export const getSuggestions = async (prompt) => {
     const data = await response.json();
     if (data.error) throw new Error(`Mistral Error: ${data.error.message}`);
     
-    const content = JSON.parse(data.choices[0].message.content);
+    const content = parseLLMJSON(data.choices[0].message.content);
     return { success: true, suggestions: content.suggestions };
   } catch (error) {
     console.error("Suggestions Error:", error);
@@ -62,7 +90,7 @@ export const generateFullRecipeData = async (title, context = "") => {
               - Total calories as calories (only number), Minutes to cook as cookTime and serving number as serveTo,
               - realistic image Text prompt as per recipe as imagePrompt.
               
-              Return a valid JSON object matching this structure.
+              Return a valid JSON object matching this structure. Ensure all fields are present.
             `
           },
           { role: "user", content: `Create a recipe for: ${title}. ${context}` }
@@ -74,9 +102,13 @@ export const generateFullRecipeData = async (title, context = "") => {
     const data = await response.json();
     if (data.error) throw new Error(`GPT Error: ${data.error.message}`);
 
-    const recipe = JSON.parse(data.choices[0].message.content);
-    // Normalize data to ensure it has title if missing from LLM (sometimes LLM omits it if not explicitly asked in JSON structure, though usually wrapper handles it)
-    recipe.title = title; 
+    const recipe = parseLLMJSON(data.choices[0].message.content);
+    
+    // Ensure critical fields exist to prevent frontend/DB crashes
+    recipe.title = recipe.recipeName || recipe.title || title; 
+    recipe.ingredient = recipe.ingredient || recipe.ingredients || [];
+    recipe.steps = recipe.steps || recipe.instructions || [];
+    
     return { success: true, data: recipe };
   } catch (error) {
     console.error("Full Recipe Error:", error);
@@ -98,30 +130,41 @@ export const generateRecipeImage = async (imagePrompt) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openai/dall-e-3", // Using DALL-E 3 as requested
+        model: "openai/dall-e-3",
         messages: [
           {
             role: "user",
             content: imagePrompt
           }
-        ]
+        ],
+        // Required for image generation on some providers via OpenRouter
+        modalities: ["image"] 
       })
     });
 
     const data = await response.json();
     if (data.error) throw new Error(`Image Gen Error: ${data.error.message}`);
 
-    // DALL-E 3 on OpenRouter typically returns the URL in the content or as an output. 
-    // Standard OpenRouter chat completion for image models usually embeds the URL in the content.
-    // However, for native DALL-E API it might be different, but OpenRouter normalizes it.
+    // DALL-E 3 on OpenRouter handles response in message.content as URL usually,
+    // but some providers put it in images array.
+    let imageUrl = null;
+    if (data.choices && data.choices[0].message) {
+      const msg = data.choices[0].message;
+      imageUrl = (msg.images && msg.images[0]) || msg.content;
+    }
+
+    if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('http')) {
+        // Fallback to extraction if content contains extra text
+        const match = (data.choices?.[0]?.message?.content || "").match(/https?:\/\/[^\s"'<>]+/);
+        imageUrl = match ? match[0] : "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop";
+    }
     
     return { 
       success: true, 
-      imageUrl: data.choices[0].message.content
+      imageUrl: imageUrl
     };
   } catch (error) {
     console.error("Image Generation Error:", error);
-    // Return placeholder on failure
     return { 
       success: false, 
       imageUrl: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop" 
