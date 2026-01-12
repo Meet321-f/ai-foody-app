@@ -28,7 +28,11 @@ Telangana,Sarva Pindi,https://www.google.com/search?tbm=isch&q=Sarva+Pindi,30 mi
 Tripura,Mui Borok,https://www.google.com/search?tbm=isch&q=Mui+Borok+Recipe,40 mins,"Berma (Fermented Fish); Vegetables; Chili; Salt",150 kcal,"1. Boil water with fermented fish paste. 2. Add vegetables and green chilies. 3. Cook without oil until veggies are soft."
 Uttar Pradesh,Galouti Kebab,https://www.google.com/search?tbm=isch&q=Galouti+Kebab,60 mins,"Minced Mutton; Raw Papaya Paste; Roasted Gram Flour; Rose Water; Spices",350 kcal,"1. Marinate mince with papaya and spices (tenderizer). 2. Shape into patties. 3. Shallow fry in Ghee until melt-in-mouth texture."
 Uttarakhand,Kafuli,https://www.google.com/search?tbm=isch&q=Uttarakhand+Kafuli,35 mins,"Spinach; Fenugreek Leaves; Rice Paste; Spices; Curd",180 kcal,"1. Boil and blend leafy greens. 2. Cook with spices and rice paste (thickener). 3. Add beaten curd and simmer."
-West Bengal,Macher Jhol,https://www.google.com/search?tbm=isch&q=Macher+Jhol,45 mins,"Rohu/Katla Fish; Potatoes; Mustard Oil; Kalonji; Turmeric",280 kcal,"1. Fry fish pieces. 2. Sauté kalonji and potatoes. 3. Add turmeric and water. 4. Add fish and simmer until gravy is light."`;
+West Bengal,Macher Jhol,https://www.google.com/search?tbm=isch&q=Macher+Jhol,45 mins,"Rohu/Katla Fish; Potatoes; Mustard Oil; Kalonji; Turmeric",280 kcal,"1. Fry fish pieces. 2. Sauté kalonji and potatoes. 3. Add turmeric and water. 4. Add fish and simmer until gravy is light."
+Andhra Pradesh,Gongura Mutton/Meat,https://www.google.com/search?tbm=isch&q=Gongura+Mutton+Curry,50 mins,"Mutton; Gongura Leaves (Sorrel); Onions; Green Chilies; Ginger-Garlic Paste",350 kcal,"1. Pressure cook mutton with turmeric and ginger-garlic. 2. Fry Gongura leaves until mushy paste forms. 3. Cook onion masala base. 4. Mix mutton and gongura paste; simmer until oil separates."
+Andhra Pradesh,Pesarattu (Green Moong Dosa),https://www.google.com/search?tbm=isch&q=Pesarattu+Dosa,20 mins,"Whole Green Moong Dal; Rice; Ginger; Green Chilies; Cumin; Onions",200 kcal,"1. Soak moong dal and rice for 4-6 hours. 2. Grind with ginger and chilies into a batter (no fermentation needed). 3. Spread on hot tawa like dosa. 4. Top with onions and cumin; serve with ginger chutney."
+Andhra Pradesh,Gutti Vankaya Kura (Stuffed Brinjal),https://www.google.com/search?tbm=isch&q=Gutti+Vankaya+Curry,40 mins,"Small Brinjals; Peanuts; Coconut; Sesame Seeds; Tamarind; Onions",280 kcal,"1. Roast peanuts; sesame; and coconut; grind to paste with spices. 2. Slit brinjals and stuff with the paste. 3. Sauté onions; add remaining paste and water. 4. Add stuffed brinjals and cook covered until soft."
+Andhra Pradesh,Chepala Pulusu (Fish Curry),https://www.google.com/search?tbm=isch&q=Andhra+Chepala+Pulusu,45 mins,"Fish Pieces; Tamarind Pulp; Onions; Tomatoes; Mustard Seeds; Fenugreek",300 kcal,"1. Soak tamarind and extract thick juice. 2. Sauté onions; fenugreek seeds; and tomatoes. 3. Add tamarind pulp and boil. 4. Gently drop raw fish pieces. Simmer without stirring until fish is cooked."`;
 
 function parseCSV(csv) {
     const lines = csv.split('\n');
@@ -70,6 +74,9 @@ async function migrate() {
     const recipes = parseCSV(rawData);
     
     try {
+        // Clear existing data to avoid duplicates (optional, based on preference)
+        // Or just insert all from scratch since we updated the rawData list
+        await db.delete(coustomeRecipesTable).execute();
         await db.insert(coustomeRecipesTable).values(recipes).execute();
         console.log("Migration successful! Inserted " + recipes.length + " recipes.");
     } catch (error) {
