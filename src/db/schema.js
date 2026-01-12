@@ -43,3 +43,15 @@ export const profilesTable = pgTable("profiles", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+export const coustomeRecipesTable = pgTable("coustome_recipes", {
+  id: serial("id").primaryKey(),
+  state: text("state").notNull(),
+  name: text("name").notNull(),
+  image: text("image"),
+  cookTime: text("cook_time"),
+  ingredients: text("ingredients"),
+  calories: text("calories"),
+  steps: text("steps"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
