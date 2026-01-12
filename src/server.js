@@ -1,7 +1,7 @@
 import express from "express";
 import { ENV } from "./config/env.js";
 import { db } from "./config/db.js";
-import { favoritesTable, recipesTable, commentsTable, profilesTable } from "./db/schema.js";
+import { favoritesTable, recipesTable, commentsTable, profilesTable, coustomeRecipesTable } from "./db/schema.js";
 import { and, eq, desc, gt } from "drizzle-orm";
 import job from "./config/cron.js";
 import { generateRecipe, getSuggestions, generateFullRecipeData, generateRecipeImage } from "./services/aiService.js";
@@ -376,6 +376,38 @@ app.post("/api/ai/generate-recipe", clerkAuth, async (req, res) => {
       success: false, 
       error: error.message || "Failed to generate recipe" 
     });
+  }
+});
+
+// Custom/Indian Recipes from NeonDB
+app.get("/api/indian-recipes", async (req, res) => {
+  try {
+    const recipes = await db
+      .select()
+      .from(coustomeRecipesTable);
+    res.status(200).json(recipes);
+  } catch (error) {
+    console.log("Error fetching indian recipes", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
+app.get("/api/indian-recipes/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const recipe = await db
+      .select()
+      .from(coustomeRecipesTable)
+      .where(eq(coustomeRecipesTable.id, parseInt(id)));
+
+    if (recipe.length === 0) {
+      return res.status(404).json({ error: "Recipe not found" });
+    }
+
+    res.status(200).json(recipe[0]);
+  } catch (error) {
+    console.log("Error fetching indian recipe by id", error);
+    res.status(500).json({ error: "Something went wrong" });
   }
 });
 
