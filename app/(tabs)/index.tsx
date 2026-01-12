@@ -1,98 +1,286 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  FlatList,
+  RefreshControl,
+  Platform,
+  StyleSheet,
+} from "react-native";
+import { BlurView } from "expo-blur";
+import { useEffect, useState } from "react";
+import {
+  widthPercentageToDP as wp,
+  heightPercentageToDP as hp,
+} from "react-native-responsive-screen";
+import { Ionicons } from "@expo/vector-icons";
+import { MealAPI } from "../../services/mealAPI";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import {
+  getAppSetting,
+  setAppSetting,
+  initDB,
+  getCategories,
+  saveCategories,
+  getRecipes,
+  saveRecipes,
+} from "../../services/db";
+import { homeStyles } from "../../assets/styles/home.styles";
+import { Image } from "expo-image";
+import { COLORS } from "../../constants/colors";
+import CategoryFilter from "../../components/CategoryFilter";
+import RecipeCard from "../../components/RecipeCard";
+import LoadingSpinner from "../../components/LoadingSpinner";
+import { Category, Recipe } from "../../types";
+import { useUserProfile } from "../../hooks/useUserProfile";
+import SafeScreen from "../../components/SafeScreen";
+import PromoBanner from "../../components/PromoBanner";
+import RecipeTypeSelector from "../../components/RecipeTypeSelector";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export default function HomeScreen() {
+const HomeScreen = () => {
+  const router = useRouter();
+  const { profile } = useUserProfile();
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [featuredRecipe, setFeaturedRecipe] = useState<Recipe | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [recipeType, setRecipeType] = useState<"indian" | "others">("others");
+  const [allIndianRecipes, setAllIndianRecipes] = useState<Recipe[]>([]);
+
+  const loadData = async () => {
+    try {
+      if (recipeType === "others") {
+        // 1. Load from Cache (SQLite) - Instant UI
+        const cachedCategories = getCategories();
+        const cachedRecipes = getRecipes();
+
+        if (cachedCategories.length > 0) {
+          setCategories(cachedCategories);
+          if (!selectedCategory) {
+            setSelectedCategory(cachedCategories[0].name);
+          }
+        }
+
+        if (cachedRecipes.length > 0) {
+          setRecipes(cachedRecipes);
+          setLoading(false); // Cache hit, hide spinner
+        } else {
+          setLoading(true); // No cache, show spinner
+        }
+
+        // 2. Fetch Fresh Data (API) in background
+        const fetchPromise = Promise.all([
+          MealAPI.getCategories(),
+          MealAPI.getRandomMeals(8),
+          MealAPI.getRandomMeal(),
+        ]);
+
+        const [apiCategories, randomMeals, featuredMeal] = await fetchPromise;
+
+        if (apiCategories && apiCategories.length > 0) {
+          const transformedCategories: Category[] = apiCategories.map(
+            (cat: any, index: number) => ({
+              id: index + 1,
+              name: cat.strCategory,
+              image: cat.strCategoryThumb,
+              description: cat.strCategoryDescription,
+            })
+          );
+          setCategories(transformedCategories);
+          saveCategories(transformedCategories);
+
+          if (!selectedCategory && transformedCategories.length > 0) {
+            setSelectedCategory(transformedCategories[0].name);
+          }
+        }
+
+        if (randomMeals && randomMeals.length > 0) {
+          const transformedMeals: Recipe[] = randomMeals
+            .map((meal: any) => MealAPI.transformMealData(meal))
+            .filter((meal: any): meal is Recipe => meal !== null);
+
+          setRecipes(transformedMeals);
+          saveRecipes(transformedMeals);
+        }
+
+        if (featuredMeal) {
+          const transformedFeatured = MealAPI.transformMealData(featuredMeal);
+          setFeaturedRecipe(transformedFeatured as Recipe);
+        }
+      } else {
+        // Indian Recipes Logic
+        setLoading(true);
+        const indianRecipes = await MealAPI.getIndianRecipes();
+        const transformed: Recipe[] = indianRecipes
+          .map((r: any) => MealAPI.transformCustomRecipe(r))
+          .filter((r: any): r is Recipe => r !== null);
+
+        setRecipes(transformed);
+        setAllIndianRecipes(transformed);
+
+        // Use states as categories for Indian recipes
+        const states = Array.from(
+          new Set(indianRecipes.map((r: any) => r.state))
+        ).map((state: any, idx) => ({
+          id: idx + 1,
+          name: state as string,
+          image: "https://www.themealdb.com/images/category/vegetarian.png", // Fallback for indian categories
+        }));
+
+        setCategories(states);
+        if (states.length > 0) setSelectedCategory(states[0].name);
+
+        // Random featured for Indian
+        if (transformed.length > 0) {
+          setFeaturedRecipe(
+            transformed[Math.floor(Math.random() * transformed.length)]
+          );
+        }
+      }
+    } catch (error) {
+      console.log("Error loading the data", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadCategoryData = async (category: string) => {
+    try {
+      const meals = await MealAPI.filterByCategory(category);
+      const transformedMeals: Recipe[] = meals
+        .map((meal: any) => MealAPI.transformMealData(meal))
+        .filter((meal: any): meal is Recipe => meal !== null);
+      setRecipes(transformedMeals);
+    } catch (error) {
+      console.error("Error loading category data:", error);
+      setRecipes([]);
+    }
+  };
+
+  const handleCategorySelect = async (category: string) => {
+    setSelectedCategory(category);
+    if (recipeType === "others") {
+      await loadCategoryData(category);
+    } else {
+      // Filter the already fetched Indian recipes by state
+      const filtered = allIndianRecipes.filter((r) => r.area === category);
+      setRecipes(filtered);
+    }
+  };
+
+  const handleTypeSelect = (type: "indian" | "others") => {
+    setRecipeType(type);
+    setSelectedCategory(null);
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [recipeType]);
+
+  if (loading && !refreshing)
+    return <LoadingSpinner message="Loading delicions recipes..." />;
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
+    <View style={[homeStyles.container, { backgroundColor: "transparent" }]}>
+      <SafeScreen>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={COLORS.primary}
             />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
+          }
+          contentContainerStyle={homeStyles.scrollContent}
+        >
+          {/* WELCOME SECTION */}
+          <TouchableOpacity
+            style={homeStyles.welcomeSection}
+            onPress={() => router.push("/profile")}
+            activeOpacity={0.8}
+          >
+            <Image
+              source={
+                profile?.image
+                  ? { uri: profile.image }
+                  : require("../../assets/images/default.png")
+              }
+              style={homeStyles.headerProfileImage}
+              contentFit="cover"
+            />
+            <View style={homeStyles.welcomeTextContainer}>
+              <Text style={homeStyles.greetingText}>
+                Hello, {profile?.name || "Guest"} 👋
+              </Text>
+              <Text style={homeStyles.subtitleText}>Explore your recipes</Text>
+            </View>
+          </TouchableOpacity>
+
+          <PromoBanner />
+
+          <RecipeTypeSelector
+            selectedType={recipeType}
+            onSelectType={handleTypeSelect}
+          />
+
+          {categories.length > 0 && (
+            <CategoryFilter
+              categories={categories}
+              selectedCategory={selectedCategory}
+              onSelectCategory={handleCategorySelect}
+            />
+          )}
+
+          <View style={homeStyles.recipesSection}>
+            <View style={homeStyles.sectionHeader}>
+              <Text style={homeStyles.sectionTitle}>
+                {recipeType === "indian"
+                  ? `${selectedCategory} Specials`
+                  : selectedCategory}
+              </Text>
+            </View>
+
+            {recipes.length > 0 ? (
+              <FlatList
+                data={recipes}
+                renderItem={({ item }) => <RecipeCard recipe={item} />}
+                keyExtractor={(item) => item.id.toString()}
+                numColumns={2}
+                columnWrapperStyle={homeStyles.row}
+                contentContainerStyle={homeStyles.recipesGrid}
+                scrollEnabled={false}
+                // ListEmptyComponent={}
               />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
-
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+            ) : (
+              <View style={homeStyles.emptyState}>
+                <Ionicons
+                  name="restaurant-outline"
+                  size={64}
+                  color={COLORS.textLight}
+                />
+                <Text style={homeStyles.emptyTitle}>No recipes found</Text>
+                <Text style={homeStyles.emptyDescription}>
+                  Try a different category
+                </Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </SafeScreen>
+    </View>
   );
-}
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
+};
+export default HomeScreen;

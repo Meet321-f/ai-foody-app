@@ -1,0 +1,4 @@
+- [x] Update name initial state to 'me name'
+- [x] Update bio initial state to 'me bio'
+- [x] Add email text box between name and bio
+- [x] Add logout button that sends user to login screen
