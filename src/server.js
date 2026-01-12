@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import { ENV } from "./config/env.js";
 import { db } from "./config/db.js";
 import { favoritesTable, recipesTable, commentsTable, profilesTable, coustomeRecipesTable } from "./db/schema.js";
@@ -18,6 +19,7 @@ console.log("---------------------------------------------------------");
 
 if (ENV.NODE_ENV === "production") job.start();
 
+app.use(cors());
 app.use(express.json());
 
 app.get("/api/health", (req, res) => {
