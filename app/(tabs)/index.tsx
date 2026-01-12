@@ -26,6 +26,8 @@ import {
   saveCategories,
   getRecipes,
   saveRecipes,
+  getCustomRecipes,
+  saveCustomRecipes,
 } from "../../services/db";
 import { homeStyles } from "../../assets/styles/home.styles";
 import { Image } from "expo-image";
@@ -116,28 +118,28 @@ const HomeScreen = () => {
       } else {
         // Indian Recipes Logic
         setLoading(true);
-        const indianRecipes = await MealAPI.getIndianRecipes();
+
+        // 1. Check SQLite Cache First
+        const cachedIndian = getCustomRecipes();
+        if (cachedIndian.length > 0) {
+          setRecipes(cachedIndian);
+          setAllIndianRecipes(cachedIndian);
+          setCategories([]); // Ensure categories are cleared even from cache
+          setLoading(false);
+        }
+
+        // Fetch from Legacy NeonDB (Limited to 10)
+        const indianRecipes = await MealAPI.getIndianRecipes(10);
         const transformed: Recipe[] = indianRecipes
           .map((r: any) => MealAPI.transformCustomRecipe(r))
           .filter((r: any): r is Recipe => r !== null);
 
-        setRecipes(transformed);
-        setAllIndianRecipes(transformed);
-
-        // Use states as categories for Indian recipes
-        const states = Array.from(
-          new Set(indianRecipes.map((r: any) => r.state))
-        ).map((state: any, idx) => ({
-          id: idx + 1,
-          name: state as string,
-          image: "https://www.themealdb.com/images/category/vegetarian.png", // Fallback for indian categories
-        }));
-
-        setCategories(states);
-        if (states.length > 0) setSelectedCategory(states[0].name);
-
-        // Random featured for Indian
         if (transformed.length > 0) {
+          setRecipes(transformed);
+          setAllIndianRecipes(transformed);
+          saveCustomRecipes(transformed);
+          setCategories([]); // Remove categories for Indian recipes as requested
+
           setFeaturedRecipe(
             transformed[Math.floor(Math.random() * transformed.length)]
           );
@@ -167,16 +169,13 @@ const HomeScreen = () => {
     setSelectedCategory(category);
     if (recipeType === "others") {
       await loadCategoryData(category);
-    } else {
-      // Filter the already fetched Indian recipes by state
-      const filtered = allIndianRecipes.filter((r) => r.area === category);
-      setRecipes(filtered);
     }
   };
 
   const handleTypeSelect = (type: "indian" | "others") => {
     setRecipeType(type);
     setSelectedCategory(null);
+    setCategories([]); // Reset categories immediately on type switch
   };
 
   const onRefresh = async () => {
@@ -247,9 +246,7 @@ const HomeScreen = () => {
           <View style={homeStyles.recipesSection}>
             <View style={homeStyles.sectionHeader}>
               <Text style={homeStyles.sectionTitle}>
-                {recipeType === "indian"
-                  ? `${selectedCategory} Specials`
-                  : selectedCategory}
+                {recipeType === "indian" ? "Indian Recipes" : selectedCategory}
               </Text>
             </View>
 
@@ -262,7 +259,6 @@ const HomeScreen = () => {
                 columnWrapperStyle={homeStyles.row}
                 contentContainerStyle={homeStyles.recipesGrid}
                 scrollEnabled={false}
-                // ListEmptyComponent={}
               />
             ) : (
               <View style={homeStyles.emptyState}>

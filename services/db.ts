@@ -42,6 +42,12 @@ export const initDB = () => {
         image TEXT,
         data TEXT
       );
+      CREATE TABLE IF NOT EXISTS custom_recipes (
+        id TEXT PRIMARY KEY NOT NULL,
+        title TEXT,
+        image TEXT,
+        data TEXT
+      );
     `);
     console.log("Database initialized");
   } catch (error) {
@@ -187,5 +193,43 @@ export const saveRecipes = (recipes: any[]) => {
     console.log("Recipes saved to DB");
   } catch (error) {
     console.error("Error saving recipes:", error);
+  }
+};
+
+// --- Custom Indian Recipes ---
+export const getCustomRecipes = (): any[] => {
+  try {
+    const rows = db.getAllSync("SELECT * FROM custom_recipes");
+    return rows
+      .map((row: any) => {
+        try {
+          return JSON.parse(row.data);
+        } catch (e) {
+          return null;
+        }
+      })
+      .filter(Boolean);
+  } catch (error) {
+    console.error("Error getting custom recipes:", error);
+    return [];
+  }
+};
+
+export const saveCustomRecipes = (recipes: any[]) => {
+  try {
+    const statement = db.prepareSync(
+      "INSERT OR REPLACE INTO custom_recipes (id, title, image, data) VALUES ($id, $title, $image, $data)"
+    );
+    for (const recipe of recipes) {
+      statement.executeSync({
+        $id: recipe.id.toString(),
+        $title: recipe.title,
+        $image: recipe.image,
+        $data: JSON.stringify(recipe),
+      });
+    }
+    console.log("Custom recipes saved to DB");
+  } catch (error) {
+    console.error("Error saving custom recipes:", error);
   }
 };

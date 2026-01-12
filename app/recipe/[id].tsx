@@ -653,9 +653,6 @@ const RecipeDetailScreen = () => {
 
           <View style={styles.contentSection}>
             {/* BADGE & TITLE */}
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{recipe.category}</Text>
-            </View>
             <Text style={styles.recipeTitle}>{recipe.title}</Text>
 
             {/* STATS SCROLLER */}

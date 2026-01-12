@@ -22,7 +22,8 @@
       "adaptiveIcon": {
         "backgroundColor": "#0D0D0D"
       },
-      "package": "com.anonymous.foody"
+      "package": "com.anonymous.foody",
+      "usesCleartextTraffic": true
     },
 
     "web": {

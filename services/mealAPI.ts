@@ -96,10 +96,12 @@ export const MealAPI = {
   },
 
   // GET Indian Recipes from our NeonDB Backend
-  getIndianRecipes: async () => {
+  getIndianRecipes: async (limit: number = 10, offset: number = 0) => {
     try {
       const { API_URL } = await import("../constants/api");
-      const response = await fetch(`${API_URL}/indian-recipes`);
+      const response = await fetch(
+        `${API_URL}/indian-recipes?limit=${limit}&offset=${offset}`
+      );
       const data = await response.json();
       return data || [];
     } catch (error) {
@@ -108,7 +110,7 @@ export const MealAPI = {
     }
   },
 
-  // GET Indian Recipe by ID
+  // GET Indian Recipe by ID from NeonDB
   getIndianRecipeById: async (id: string) => {
     try {
       const { API_URL } = await import("../constants/api");
@@ -126,25 +128,37 @@ export const MealAPI = {
     if (!recipe) return null;
 
     let steps = [];
-    try {
-      steps = JSON.parse(recipe.steps);
-    } catch (e) {
-      // Fallback if not JSON string
+    if (typeof recipe.steps === "string") {
+      try {
+        steps = JSON.parse(recipe.steps);
+      } catch (e) {
+        steps = [recipe.steps];
+      }
+    } else if (Array.isArray(recipe.steps)) {
+      steps = recipe.steps;
+    } else {
       steps = recipe.steps ? [recipe.steps] : [];
     }
 
     return {
-      id: `custom_${recipe.id}`, // Add prefix to differentiate
+      id: recipe.id.toString().startsWith("custom_")
+        ? recipe.id
+        : `custom_${recipe.id}`,
       title: recipe.name,
       description: `State: ${recipe.state}. Calories: ${
         recipe.calories || "N/A"
       }`,
       image: recipe.image,
       cookTime: recipe.cookTime,
-      servings: 4, // Default our recipes to 4
+      servings: 4,
       category: "Indian",
       area: recipe.state,
-      ingredients: recipe.ingredients ? recipe.ingredients.split("; ") : [],
+      ingredients:
+        typeof recipe.ingredients === "string"
+          ? recipe.ingredients.split("; ")
+          : Array.isArray(recipe.ingredients)
+          ? recipe.ingredients
+          : [],
       instructions: steps,
       originalData: recipe,
       isCustom: true,

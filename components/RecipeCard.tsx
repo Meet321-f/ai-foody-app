@@ -176,9 +176,6 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
       </View>
 
       <View style={styles.content}>
-        <View style={styles.categoryLabel}>
-          <Text style={styles.categoryText}>Signature</Text>
-        </View>
         <Text style={styles.title} numberOfLines={2}>
           {recipe.title}
         </Text>
