@@ -384,9 +384,14 @@ app.post("/api/ai/generate-recipe", clerkAuth, async (req, res) => {
 // Custom/Indian Recipes from NeonDB
 app.get("/api/indian-recipes", async (req, res) => {
   try {
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = parseInt(req.query.offset) || 0;
+
     const recipes = await db
       .select()
-      .from(coustomeRecipesTable);
+      .from(coustomeRecipesTable)
+      .limit(limit)
+      .offset(offset);
     res.status(200).json(recipes);
   } catch (error) {
     console.log("Error fetching indian recipes", error);
