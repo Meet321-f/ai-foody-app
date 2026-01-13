@@ -17,7 +17,8 @@ async function makeUnsplashPermanent() {
             if (recipe.image && recipe.image.includes('google.com/search')) {
                 // Generate permanent Unsplash URL
                 const seed = recipe.name.replace(/\s+/g, '-').toLowerCase();
-                const newUrl = `https://source.unsplash.com/400x300/?indian-food,${seed}`;
+                // Using a high-quality food image as permanent fallback since source via keywords is deprecated
+                const newUrl = `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=800&auto=format&fit=crop&sig=${seed}`;
                 
                 // Update database
                 await db
