@@ -447,9 +447,10 @@ app.get("/api/indian-recipes/:id", async (req, res) => {
   }
 });
 
-app.get("/api/ai/history/:userId", async (req, res) => {
+app.get("/api/ai/history/:userId", clerkAuth, async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.auth.userId;
+    console.log(`[AI History] Authenticated User: ${userId}`);
 
     const history = await db
       .select()
@@ -468,8 +469,9 @@ app.get("/api/ai/history/:userId", async (req, res) => {
 });
 
 // Community & Manual Recipes
-app.post("/api/recipes", async (req, res) => {
+app.post("/api/recipes", clerkAuth, async (req, res) => {
   try {
+    const userId = req.auth.userId;
     const { 
       title, 
       description, 
@@ -478,14 +480,15 @@ app.post("/api/recipes", async (req, res) => {
       image, 
       cookTime, 
       servings, 
-      userId, 
       userName, 
       userImage, 
       isPublic 
     } = req.body;
 
-    if (!title || !userId) {
-      return res.status(400).json({ error: "Title and UserID are required" });
+    console.log(`[Create Recipe] User: ${userId}, Title: ${title}`);
+
+    if (!title) {
+      return res.status(400).json({ error: "Title is required" });
     }
 
     const [newRecipe] = await db
@@ -527,9 +530,10 @@ app.get("/api/community/recipes", async (req, res) => {
   }
 });
 
-app.get("/api/recipes/user/:userId", async (req, res) => {
+app.get("/api/recipes/user/:userId", clerkAuth, async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.auth.userId;
+    console.log(`[User Recipes] Fetching for: ${userId}`);
 
     const recipes = await db
       .select()
