@@ -22,6 +22,11 @@ if (ENV.NODE_ENV === "production") job.start();
 app.use(cors());
 app.use(express.json());
 
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  next();
+});
+
 app.get("/api/health", (req, res) => {
   res.status(200).json({ success: true });
 });
@@ -76,12 +81,31 @@ app.delete("/api/favorites/:userId/:recipeId", async (req, res) => {
     await db
       .delete(favoritesTable)
       .where(
-        and(eq(favoritesTable.userId, userId), eq(favoritesTable.recipeId, parseInt(recipeId)))
+        and(eq(favoritesTable.userId, userId), eq(favoritesTable.recipeId, recipeId))
       );
 
     res.status(200).json({ message: "Favorite removed successfully" });
   } catch (error) {
     console.log("Error removing a favorite", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
+app.get("/api/recipes/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const recipe = await db
+      .select()
+      .from(recipesTable)
+      .where(eq(recipesTable.id, parseInt(id)));
+
+    if (recipe.length === 0) {
+      return res.status(404).json({ error: "Recipe not found" });
+    }
+
+    res.status(200).json(recipe[0]);
+  } catch (error) {
+    console.log("Error fetching recipe by id", error);
     res.status(500).json({ error: "Something went wrong" });
   }
 });
@@ -126,7 +150,7 @@ app.post("/api/comments", async (req, res) => {
       .insert(commentsTable)
       .values({
         userId,
-        recipeId: parseInt(recipeId),
+        recipeId: recipeId,
         text,
         userName,
       })
@@ -146,7 +170,7 @@ app.get("/api/comments/:recipeId", async (req, res) => {
     const comments = await db
       .select()
       .from(commentsTable)
-      .where(eq(commentsTable.recipeId, parseInt(recipeId)))
+      .where(eq(commentsTable.recipeId, recipeId))
       .orderBy(desc(commentsTable.createdAt));
 
     res.status(200).json(comments);

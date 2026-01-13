@@ -3,7 +3,7 @@ import { pgTable, serial, text, timestamp, integer, json } from "drizzle-orm/pg-
 export const favoritesTable = pgTable("favorites", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull(),
-  recipeId: integer("recipe_id").notNull(),
+  recipeId: text("recipe_id").notNull(),
   title: text("title").notNull(),
   image: text("image"),
   cookTime: text("cook_time"),
@@ -27,7 +27,7 @@ export const recipesTable = pgTable("recipes", {
 export const commentsTable = pgTable("comments", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull(),
-  recipeId: integer("recipe_id").notNull(),
+  recipeId: text("recipe_id").notNull(),
   text: text("text").notNull(),
   userName: text("user_name"),
   createdAt: timestamp("created_at").defaultNow(),
