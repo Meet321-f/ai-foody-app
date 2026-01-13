@@ -467,6 +467,83 @@ app.get("/api/ai/history/:userId", async (req, res) => {
   }
 });
 
+// Community & Manual Recipes
+app.post("/api/recipes", async (req, res) => {
+  try {
+    const { 
+      title, 
+      description, 
+      ingredients, 
+      instructions, 
+      image, 
+      cookTime, 
+      servings, 
+      userId, 
+      userName, 
+      userImage, 
+      isPublic 
+    } = req.body;
+
+    if (!title || !userId) {
+      return res.status(400).json({ error: "Title and UserID are required" });
+    }
+
+    const [newRecipe] = await db
+      .insert(recipesTable)
+      .values({
+        title,
+        description,
+        ingredients,
+        instructions,
+        image,
+        cookTime,
+        servings,
+        userId,
+        userName,
+        userImage,
+        isPublic: isPublic ? "true" : "false",
+      })
+      .returning();
+
+    res.status(201).json({ success: true, data: newRecipe });
+  } catch (error) {
+    console.log("Error creating manual recipe", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
+app.get("/api/community/recipes", async (req, res) => {
+  try {
+    const recipes = await db
+      .select()
+      .from(recipesTable)
+      .where(eq(recipesTable.isPublic, "true"))
+      .orderBy(desc(recipesTable.createdAt));
+
+    res.status(200).json({ success: true, data: recipes });
+  } catch (error) {
+    console.log("Error fetching community recipes", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
+app.get("/api/recipes/user/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const recipes = await db
+      .select()
+      .from(recipesTable)
+      .where(eq(recipesTable.userId, userId))
+      .orderBy(desc(recipesTable.createdAt));
+
+    res.status(200).json({ success: true, data: recipes });
+  } catch (error) {
+    console.log("Error fetching user recipes", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log("Server is running on PORT:", PORT);
 });

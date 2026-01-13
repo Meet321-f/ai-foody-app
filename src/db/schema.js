@@ -21,6 +21,9 @@ export const recipesTable = pgTable("recipes", {
   cookTime: text("cook_time"),
   servings: text("servings"),
   userId: text("user_id"),
+  userName: text("user_name"),
+  userImage: text("user_image"),
+  isPublic: text("is_public").default("false"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
