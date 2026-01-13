@@ -259,12 +259,16 @@ app.put("/api/profiles/:userId", async (req, res) => {
 app.post("/api/ai/suggestions", clerkAuth, async (req, res) => {
   try {
     const { prompt } = req.body;
+    const userId = req.auth.userId;
+    console.log(`[AI Suggestions] User ${userId} requested for prompt: ${prompt}`);
+
     if (!prompt) return res.status(400).json({ error: "Prompt is required" });
 
     const result = await getSuggestions(prompt);
+    console.log(`[AI Suggestions] Success for User ${userId}`);
     res.status(200).json(result);
   } catch (error) {
-    console.error("Suggestions Error:", error);
+    console.error(`[AI Suggestions] Error:`, error.message);
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -273,6 +277,7 @@ app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
   try {
     const { title, context } = req.body;
     const userId = req.auth.userId;
+    console.log(`[AI Full Recipe] User ${userId} requested for: ${title}`);
 
     if (!title) return res.status(400).json({ error: "Title is required" });
 
@@ -291,7 +296,7 @@ app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
     if (dailyCount.length >= 3) {
       return res.status(403).json({
         success: false,
-        error: "Daily limit reached! 👨‍🍳 You can only generate 3 recipes every 24 hours. Please buy premium for unlimited access."
+        error: "Daily limit reached! 👨‍🍳 You can only generate 3 recipes every 24 hours. Please try again later."
       });
     }
 

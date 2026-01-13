@@ -55,6 +55,8 @@ export const getSuggestions = async (prompt) => {
     });
 
     const data = await response.json();
+    console.log(`[AI Service] Raw Response from OpenRouter:`, JSON.stringify(data).substring(0, 200));
+    
     if (data.error) throw new Error(`Mistral Error: ${data.error.message}`);
     
     const content = parseLLMJSON(data.choices[0].message.content);
