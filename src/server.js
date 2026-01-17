@@ -3,7 +3,7 @@ import cors from "cors";
 import { ENV } from "./config/env.js";
 import { db } from "./config/db.js";
 import { favoritesTable, recipesTable, commentsTable, profilesTable, coustomeRecipesTable } from "./db/schema.js";
-import { and, eq, desc, gt } from "drizzle-orm";
+import { and, eq, desc, gt, sql } from "drizzle-orm";
 import job from "./config/cron.js";
 import { generateRecipe, getSuggestions, generateFullRecipeData, generateRecipeImage } from "./services/aiService.js";
 import { clerkAuth } from "./services/authService.js";
@@ -464,12 +464,13 @@ app.get("/api/indian-recipes", async (req, res) => {
     const recipes = await db
       .select()
       .from(coustomeRecipesTable)
+      .orderBy(sql`RANDOM()`)
       .limit(limit)
       .offset(offset);
 
-    // Set Cache (1 Hour)
+    // Set Cache (60 Seconds - Short TTL to allow fresh results on refresh)
     try {
-      await redisClient.set(cacheKey, JSON.stringify(recipes), "EX", 3600);
+      await redisClient.set(cacheKey, JSON.stringify(recipes), "EX", 60);
     } catch (e) {
       console.warn("Redis cache set failed", e.message);
     }
