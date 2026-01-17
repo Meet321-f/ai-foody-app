@@ -309,8 +309,13 @@ app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
     if (!title) return res.status(400).json({ error: "Title is required" });
 
     // 1. Check Daily Limit (3 recipes per day) using Redis
+    let dailyCount = 0;
     const limitKey = `limit:ai:${userId}`;
-    const dailyCount = await redisClient.get(limitKey);
+    try {
+      dailyCount = await redisClient.get(limitKey);
+    } catch (e) {
+      console.warn("Redis rate limit check failed, proceeding without limit check:", e.message);
+    }
 
     if (dailyCount && parseInt(dailyCount) >= 3) {
       return res.status(403).json({
@@ -365,9 +370,13 @@ app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
     }).returning();
 
     // Increment Limit in Redis
-    const newCount = await redisClient.incr(limitKey);
-    if (newCount === 1) {
-      await redisClient.expire(limitKey, 86400); // 24 hours
+    try {
+      const newCount = await redisClient.incr(limitKey);
+      if (newCount === 1) {
+        await redisClient.expire(limitKey, 86400); // 24 hours
+      }
+    } catch (e) {
+       console.warn("Redis rate limit increment failed:", e.message);
     }
 
     res.status(200).json({
@@ -443,9 +452,13 @@ app.get("/api/indian-recipes", async (req, res) => {
     const cacheKey = `indian:recipes:${limit}:${offset}`;
 
     // Check Cache
-    const cachedData = await redisClient.get(cacheKey);
-    if (cachedData) {
-      return res.status(200).json(JSON.parse(cachedData));
+    try {
+      const cachedData = await redisClient.get(cacheKey);
+      if (cachedData) {
+        return res.status(200).json(JSON.parse(cachedData));
+      }
+    } catch (e) {
+      console.warn("Redis cache get failed", e.message);
     }
 
     const recipes = await db
@@ -455,7 +468,11 @@ app.get("/api/indian-recipes", async (req, res) => {
       .offset(offset);
 
     // Set Cache (1 Hour)
-    await redisClient.set(cacheKey, JSON.stringify(recipes), "EX", 3600);
+    try {
+      await redisClient.set(cacheKey, JSON.stringify(recipes), "EX", 3600);
+    } catch (e) {
+      console.warn("Redis cache set failed", e.message);
+    }
     
     res.status(200).json(recipes);
   } catch (error) {
@@ -545,7 +562,11 @@ app.post("/api/recipes", clerkAuth, async (req, res) => {
       .returning();
 
     // Invalidate Community Cache
-    await redisClient.del("community:recipes");
+    try {
+      await redisClient.del("community:recipes");
+    } catch (e) {
+      console.warn("Redis cache invalidation failed", e.message);
+    }
 
     res.status(201).json({ success: true, data: newRecipe });
   } catch (error) {
@@ -559,9 +580,13 @@ app.get("/api/community/recipes", async (req, res) => {
     const cacheKey = "community:recipes";
     
     // Check Cache
-    const cachedData = await redisClient.get(cacheKey);
-    if (cachedData) {
-      return res.status(200).json({ success: true, data: JSON.parse(cachedData) });
+    try {
+        const cachedData = await redisClient.get(cacheKey);
+        if (cachedData) {
+        return res.status(200).json({ success: true, data: JSON.parse(cachedData) });
+        }
+    } catch (e) {
+        console.warn("Redis community cache get failed", e.message);
     }
 
     const recipes = await db
@@ -571,7 +596,11 @@ app.get("/api/community/recipes", async (req, res) => {
       .orderBy(desc(recipesTable.createdAt));
 
     // Set Cache (10 Minutes)
-    await redisClient.set(cacheKey, JSON.stringify(recipes), "EX", 600);
+    try {
+        await redisClient.set(cacheKey, JSON.stringify(recipes), "EX", 600);
+    } catch (e) {
+        console.warn("Redis community cache set failed", e.message);
+    }
 
     res.status(200).json({ success: true, data: recipes });
   } catch (error) {
