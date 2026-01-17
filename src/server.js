@@ -7,6 +7,8 @@ import { and, eq, desc, gt } from "drizzle-orm";
 import job from "./config/cron.js";
 import { generateRecipe, getSuggestions, generateFullRecipeData, generateRecipeImage } from "./services/aiService.js";
 import { clerkAuth } from "./services/authService.js";
+import cluster from "node:cluster";
+import os from "node:os";
 
 const app = express();
 const PORT = ENV.PORT || 5001;
@@ -17,7 +19,31 @@ console.log("OPENROUTER_API_KEY:", ENV.OPENROUTER_API_KEY ? `✅ Detected (Len: 
 console.log("CLERK_SECRET_KEY:  ", ENV.CLERK_SECRET_KEY ? `✅ Detected (Len: ${ENV.CLERK_SECRET_KEY.length})` : "❌ MISSING");
 console.log("---------------------------------------------------------");
 
-if (ENV.NODE_ENV === "production") job.start();
+const numCPUs = os.cpus().length;
+
+if (cluster.isPrimary) {
+  console.log(`Primary ${process.pid} is running`);
+  console.log(`Forking for ${numCPUs} CPUs...`);
+
+  if (ENV.NODE_ENV === "production") job.start();
+
+  // Fork workers.
+  for (let i = 0; i < numCPUs; i++) {
+    cluster.fork();
+  }
+
+  cluster.on("exit", (worker, code, signal) => {
+    console.log(`worker ${worker.process.pid} died`);
+    cluster.fork();
+  });
+}
+// Workers share the TCP connection in this app instance
+// Note: We let the app definition run for both (overhead is minimal), but only workers listen.
+// Or we can rely on !isPrimary for logic, but to minimize diff:
+// We will only guard app.listen.
+
+// Original Cron line removed from here
+
 
 app.use(cors());
 app.use(express.json());
@@ -548,6 +574,8 @@ app.get("/api/recipes/user/:userId", clerkAuth, async (req, res) => {
   }
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log("Server is running on PORT:", PORT);
-});
+if (!cluster.isPrimary) {
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Worker ${process.pid} started. Server running on PORT: ${PORT}`);
+  });
+}
