@@ -7,6 +7,7 @@ import { and, eq, desc, gt } from "drizzle-orm";
 import job from "./config/cron.js";
 import { generateRecipe, getSuggestions, generateFullRecipeData, generateRecipeImage } from "./services/aiService.js";
 import { clerkAuth } from "./services/authService.js";
+import redisClient from "./config/redis.js";
 import cluster from "node:cluster";
 import os from "node:os";
 
@@ -307,19 +308,11 @@ app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
 
     if (!title) return res.status(400).json({ error: "Title is required" });
 
-    // 1. Check Daily Limit (3 recipes per day)
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const dailyCount = await db
-      .select()
-      .from(recipesTable)
-      .where(
-        and(
-          eq(recipesTable.userId, userId),
-          gt(recipesTable.createdAt, twentyFourHoursAgo)
-        )
-      );
+    // 1. Check Daily Limit (3 recipes per day) using Redis
+    const limitKey = `limit:ai:${userId}`;
+    const dailyCount = await redisClient.get(limitKey);
 
-    if (dailyCount.length >= 3) {
+    if (dailyCount && parseInt(dailyCount) >= 3) {
       return res.status(403).json({
         success: false,
         error: "Daily limit reached! 👨‍🍳 You can only generate 3 recipes every 24 hours. Please try again later."
@@ -370,6 +363,12 @@ app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
       userId: userId,
       image: imageResult.imageUrl || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop"
     }).returning();
+
+    // Increment Limit in Redis
+    const newCount = await redisClient.incr(limitKey);
+    if (newCount === 1) {
+      await redisClient.expire(limitKey, 86400); // 24 hours
+    }
 
     res.status(200).json({
       success: true,
@@ -436,17 +435,28 @@ app.post("/api/ai/generate-recipe", clerkAuth, async (req, res) => {
   }
 });
 
-// Custom/Indian Recipes from NeonDB
+// Custom/Indian Recipes from NeonDB (Cached)
 app.get("/api/indian-recipes", async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
     const offset = parseInt(req.query.offset) || 0;
+    const cacheKey = `indian:recipes:${limit}:${offset}`;
+
+    // Check Cache
+    const cachedData = await redisClient.get(cacheKey);
+    if (cachedData) {
+      return res.status(200).json(JSON.parse(cachedData));
+    }
 
     const recipes = await db
       .select()
       .from(coustomeRecipesTable)
       .limit(limit)
       .offset(offset);
+
+    // Set Cache (1 Hour)
+    await redisClient.set(cacheKey, JSON.stringify(recipes), "EX", 3600);
+    
     res.status(200).json(recipes);
   } catch (error) {
     console.log("Error fetching indian recipes", error);
@@ -534,6 +544,9 @@ app.post("/api/recipes", clerkAuth, async (req, res) => {
       })
       .returning();
 
+    // Invalidate Community Cache
+    await redisClient.del("community:recipes");
+
     res.status(201).json({ success: true, data: newRecipe });
   } catch (error) {
     console.log("Error creating manual recipe", error);
@@ -543,11 +556,22 @@ app.post("/api/recipes", clerkAuth, async (req, res) => {
 
 app.get("/api/community/recipes", async (req, res) => {
   try {
+    const cacheKey = "community:recipes";
+    
+    // Check Cache
+    const cachedData = await redisClient.get(cacheKey);
+    if (cachedData) {
+      return res.status(200).json({ success: true, data: JSON.parse(cachedData) });
+    }
+
     const recipes = await db
       .select()
       .from(recipesTable)
       .where(eq(recipesTable.isPublic, "true"))
       .orderBy(desc(recipesTable.createdAt));
+
+    // Set Cache (10 Minutes)
+    await redisClient.set(cacheKey, JSON.stringify(recipes), "EX", 600);
 
     res.status(200).json({ success: true, data: recipes });
   } catch (error) {
