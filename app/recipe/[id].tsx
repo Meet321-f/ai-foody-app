@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { useUser } from "@clerk/clerk-expo";
 import { API_URL } from "../../constants/api";
 import { MealAPI } from "../../services/mealAPI";
+import { UserStorageService } from "../../services/userStorage";
 import LoadingSpinner from "../../components/LoadingSpinner";
 import { Image } from "expo-image";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -41,7 +42,7 @@ interface Recipe {
   servings?: number | string;
   category?: string;
   area?: string | null;
-  ingredients?: string[];
+  ingredients?: any[];
   instructions?: string[];
   youtubeUrl?: string | null;
 }
@@ -366,7 +367,7 @@ const RecipeDetailScreen = () => {
       try {
         const data = JSON.parse(params.fullRecipe as string);
         const transformed: Recipe = {
-          id: parseInt(data.id),
+          id: data.id, // Keep as string (e.g. "ai_123")
           title: data.title,
           image: data.image,
           cookTime: data.prepTime || "25 min",
@@ -390,6 +391,13 @@ const RecipeDetailScreen = () => {
         const indianMeal = await MealAPI.getIndianRecipeById(realId);
         if (indianMeal) {
           const transformed = MealAPI.transformCustomRecipe(indianMeal);
+          setRecipe(transformed);
+        }
+      } else if (recipeId.startsWith("ai_")) {
+        const realId = recipeId.replace("ai_", "");
+        const aiMeal = await MealAPI.getAiRecipeById(realId);
+        if (aiMeal) {
+          const transformed = MealAPI.transformAiRecipe(aiMeal);
           setRecipe(transformed);
         }
       } else {
@@ -418,12 +426,11 @@ const RecipeDetailScreen = () => {
     if (!userId || !recipeId) return;
 
     try {
-      const response = await fetch(`${API_URL}/favorites/${userId}`);
-      const favorites: Array<{ recipeId: number }> = await response.json();
-      const isRecipeSaved = favorites.some(
-        (fav) => fav.recipeId === parseInt(recipeId, 10)
+      const isLocallySaved = await UserStorageService.isFavorite(
+        userId,
+        recipeId
       );
-      setIsSaved(isRecipeSaved);
+      setIsSaved(isLocallySaved);
     } catch (error) {
       console.error("Error checking if recipe is saved:", error);
     }
@@ -466,32 +473,34 @@ const RecipeDetailScreen = () => {
 
     try {
       if (isSaved) {
-        const response = await fetch(
-          `${API_URL}/favorites/${userId}/${recipeId}`,
-          {
-            method: "DELETE",
-          }
-        );
-        if (!response.ok) throw new Error("Failed to remove recipe");
+        // Remove locally
+        await UserStorageService.removeFavorite(userId, recipeId);
+
+        // Remove from backend (keep best effort)
+        fetch(`${API_URL}/favorites/${userId}/${recipeId}`, {
+          method: "DELETE",
+        }).catch((e) => console.log("Backend remove failed", e));
 
         setIsSaved(false);
       } else {
-        const response = await fetch(`${API_URL}/favorites`, {
+        // Save locally
+        await UserStorageService.saveFavorite(userId, recipe);
+
+        // Save to backend (keep best effort)
+        fetch(`${API_URL}/favorites`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userId,
-            recipeId: parseInt(recipeId, 10),
+            recipeId: recipeId,
             title: recipe.title,
             image: recipe.image,
             cookTime: recipe.cookTime,
             servings: recipe.servings,
+            area: recipe.area || undefined,
           }),
-        });
+        }).catch((e) => console.log("Backend save failed", e));
 
-        if (!response.ok) throw new Error("Failed to save recipe");
         setIsSaved(true);
       }
     } catch (error) {
@@ -560,16 +569,16 @@ const RecipeDetailScreen = () => {
       }
 
       const groupIndex = shoppingGroups.findIndex(
-        (g) => g.recipeId === recipe.id.toString()
+        (g) => g.recipeId === String(recipe.id)
       );
 
       if (groupIndex === -1) {
         const newGroup: ShoppingGroup = {
-          recipeId: recipe.id.toString(),
+          recipeId: String(recipe.id),
           recipeTitle: recipe.title,
           items: (recipe.ingredients || []).map((name, i) => ({
             id: `${recipe.id}-${i}`,
-            name,
+            name: name.trim(),
             checked: false,
           })),
         };
@@ -755,11 +764,24 @@ const RecipeDetailScreen = () => {
                 {(recipe.ingredients || []).length} ITEMS
               </Text>
             </View>
-            {(recipe.ingredients || []).map((ing, idx) => {
-              // Try to split quantity if it contains ":" or common kitchen units
-              const [name, qty] = ing.includes(":")
-                ? ing.split(":")
-                : [ing, ""];
+            {(recipe.ingredients || []).map((ing: any, idx) => {
+              // Robust handling for ingredients which could be strings or objects
+              let name = "";
+              let qty = "";
+
+              if (typeof ing === "string") {
+                if (ing.includes(":")) {
+                  [name, qty] = ing.split(":");
+                } else {
+                  name = ing;
+                }
+              } else if (ing && typeof ing === "object") {
+                // Handle object format: { ingredient: "...", quantity: "...", icon: "..." }
+                name = ing.ingredient || ing.name || JSON.stringify(ing);
+                qty = ing.quantity || "";
+                if (ing.icon) name = `${ing.icon} ${name}`;
+              }
+
               return (
                 <View key={idx} style={styles.ingItem}>
                   <Text style={styles.ingName}>{name.trim()}</Text>

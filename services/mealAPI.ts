@@ -99,14 +99,39 @@ export const MealAPI = {
   getIndianRecipes: async (limit: number = 10, offset: number = 0) => {
     try {
       const { API_URL } = await import("../constants/api");
-      const response = await fetch(
-        `${API_URL}/indian-recipes?limit=${limit}&offset=${offset}`
-      );
+      const url = `${API_URL}/indian-recipes?limit=${limit}&offset=${offset}`;
+      console.log(`🔍 Fetching Indian recipes from: ${url}`);
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
       const data = await response.json();
+      console.log(`✅ Fetched ${data.length} Indian recipes from NeonDB`);
       return data || [];
     } catch (error) {
-      console.error("Error getting indian recipes:", error);
+      const err = error as Error;
+      console.error("❌ Error getting indian recipes:", err);
+      console.error("Error details:", err.message || error);
       return [];
+    }
+  },
+
+  // GET Indian Recipe by ID from NeonDB
+  getAiRecipeById: async (id: string) => {
+    try {
+      const { API_URL } = await import("../constants/api");
+      const response = await fetch(`${API_URL}/recipes/${id}`);
+      const data = await response.json();
+      return data || null;
+    } catch (error) {
+      console.error("Error getting ai recipe by id:", error);
+      return null;
     }
   },
 
@@ -123,42 +148,109 @@ export const MealAPI = {
     }
   },
 
+  // transform AI Recipe from recipesTable
+  transformAiRecipe: (recipe: any): Recipe | null => {
+    if (!recipe) return null;
+
+    let ingredients = [];
+    if (typeof recipe.ingredients === "string") {
+      try {
+        ingredients = JSON.parse(recipe.ingredients);
+      } catch (e) {
+        ingredients = recipe.ingredients.split("; ");
+      }
+    } else {
+      ingredients = recipe.ingredients || [];
+    }
+
+    let instructions = [];
+    if (typeof recipe.instructions === "string") {
+      try {
+        instructions = JSON.parse(recipe.instructions);
+      } catch (e) {
+        instructions = recipe.instructions.split(". ");
+      }
+    } else {
+      instructions = recipe.instructions || [];
+    }
+
+    return {
+      id: recipe.id.toString().startsWith("ai_")
+        ? recipe.id
+        : `ai_${recipe.id}`,
+      title: recipe.title,
+      description: recipe.description,
+      image: recipe.image,
+      cookTime: recipe.cookTime || "25 min",
+      servings: recipe.servings || 2,
+      category: "AI Chef Special",
+      ingredients,
+      instructions,
+      originalData: recipe,
+      isAi: true,
+    };
+  },
+
   // transform Custom Recipe Data
   transformCustomRecipe: (recipe: any): Recipe | null => {
     if (!recipe) return null;
 
+    // Handle instructions/steps (support both fields)
+    let rawSteps = recipe.steps || recipe.instructions;
     let steps = [];
-    if (typeof recipe.steps === "string") {
+
+    if (typeof rawSteps === "string") {
       try {
-        steps = JSON.parse(recipe.steps);
+        // Try parsing if it's a JSON array string
+        if (rawSteps.trim().startsWith("[")) {
+          steps = JSON.parse(rawSteps);
+        } else {
+          // Otherwise split by newline or periods
+          steps = rawSteps.split(/\r?\n/).filter((s) => s.trim());
+          if (steps.length <= 1) {
+            steps = rawSteps.split(". ").filter((s) => s.trim());
+          }
+        }
       } catch (e) {
-        steps = [recipe.steps];
+        steps = [rawSteps];
       }
-    } else if (Array.isArray(recipe.steps)) {
-      steps = recipe.steps;
+    } else if (Array.isArray(rawSteps)) {
+      steps = rawSteps;
     } else {
-      steps = recipe.steps ? [recipe.steps] : [];
+      steps = rawSteps ? [rawSteps] : [];
+    }
+
+    // Handle ingredients (support parsing from string or array)
+    let ingredients = [];
+    if (typeof recipe.ingredients === "string") {
+      try {
+        if (recipe.ingredients.trim().startsWith("[")) {
+          ingredients = JSON.parse(recipe.ingredients);
+        } else {
+          ingredients = recipe.ingredients
+            .split(";")
+            .map((i: string) => i.trim())
+            .filter((i: string) => i);
+        }
+      } catch (e) {
+        ingredients = [recipe.ingredients];
+      }
+    } else if (Array.isArray(recipe.ingredients)) {
+      ingredients = recipe.ingredients;
     }
 
     return {
       id: recipe.id.toString().startsWith("custom_")
         ? recipe.id
         : `custom_${recipe.id}`,
-      title: recipe.name,
-      description: `State: ${recipe.state}. Calories: ${
-        recipe.calories || "N/A"
-      }`,
+      title: recipe.title || recipe.name, // Support both title and name
+      description: recipe.description || `State: ${recipe.state || "India"}.`,
       image: recipe.image,
-      cookTime: recipe.cookTime,
-      servings: 4,
+      cookTime: recipe.cookTime || recipe.prepTime || "30 min",
+      servings: recipe.servings || 4,
       category: "Indian",
-      area: recipe.state,
-      ingredients:
-        typeof recipe.ingredients === "string"
-          ? recipe.ingredients.split("; ")
-          : Array.isArray(recipe.ingredients)
-          ? recipe.ingredients
-          : [],
+      area: recipe.state || recipe.area || "India",
+      ingredients: ingredients,
       instructions: steps,
       originalData: recipe,
       isCustom: true,

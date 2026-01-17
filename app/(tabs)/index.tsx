@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Platform,
   StyleSheet,
+  Alert,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { useEffect, useState } from "react";
@@ -42,6 +43,7 @@ import PromoBanner from "../../components/PromoBanner";
 import RecipeTypeSelector from "../../components/RecipeTypeSelector";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const DEFAULT_IMAGE = require("../../assets/images/default.png");
 
 const HomeScreen = () => {
   const router = useRouter();
@@ -119,30 +121,57 @@ const HomeScreen = () => {
         // Indian Recipes Logic
         setLoading(true);
 
-        // 1. Check SQLite Cache First
+        // 1. Check SQLite Cache First (instant UI)
         const cachedIndian = getCustomRecipes();
         if (cachedIndian.length > 0) {
           setRecipes(cachedIndian);
           setAllIndianRecipes(cachedIndian);
-          setCategories([]); // Ensure categories are cleared even from cache
-          setLoading(false);
+          setCategories([]);
+          setLoading(false); // Show cached data immediately
         }
 
-        // Fetch from Legacy NeonDB (Limited to 10)
-        const indianRecipes = await MealAPI.getIndianRecipes(10);
-        const transformed: Recipe[] = indianRecipes
-          .map((r: any) => MealAPI.transformCustomRecipe(r))
-          .filter((r: any): r is Recipe => r !== null);
+        try {
+          // 2. Fetch fresh data from NeonDB (10 recipes)
+          console.log("📡 Fetching 10 Indian recipes from NeonDB...");
+          const indianRecipes = await MealAPI.getIndianRecipes(10, 0);
 
-        if (transformed.length > 0) {
-          setRecipes(transformed);
-          setAllIndianRecipes(transformed);
-          saveCustomRecipes(transformed);
-          setCategories([]); // Remove categories for Indian recipes as requested
+          if (indianRecipes.length === 0) {
+            console.warn("⚠️ No Indian recipes returned from API");
+            if (cachedIndian.length === 0) {
+              Alert.alert(
+                "No Recipes Available",
+                "Unable to load Indian recipes. Please check your internet connection and try again."
+              );
+            }
+            return;
+          }
 
-          setFeaturedRecipe(
-            transformed[Math.floor(Math.random() * transformed.length)]
-          );
+          const transformed: Recipe[] = indianRecipes
+            .map((r: any) => MealAPI.transformCustomRecipe(r))
+            .filter((r: any): r is Recipe => r !== null);
+
+          if (transformed.length > 0) {
+            console.log(
+              `✅ Successfully loaded ${transformed.length} Indian recipes`
+            );
+            setRecipes(transformed);
+            setAllIndianRecipes(transformed);
+            saveCustomRecipes(transformed); // Update cache
+            setCategories([]);
+
+            // Set a random recipe as featured
+            setFeaturedRecipe(
+              transformed[Math.floor(Math.random() * transformed.length)]
+            );
+          }
+        } catch (error) {
+          console.error("❌ Failed to load Indian recipes:", error);
+          if (cachedIndian.length === 0) {
+            Alert.alert(
+              "Connection Error",
+              "Unable to reach the server. Please check your internet connection and try again."
+            );
+          }
         }
       }
     } catch (error) {
@@ -206,27 +235,24 @@ const HomeScreen = () => {
           contentContainerStyle={homeStyles.scrollContent}
         >
           {/* WELCOME SECTION */}
-          <TouchableOpacity
-            style={homeStyles.welcomeSection}
-            onPress={() => router.push("/profile")}
-            activeOpacity={0.8}
-          >
-            <Image
-              source={
-                profile?.image
-                  ? { uri: profile.image }
-                  : require("../../assets/images/default.png")
-              }
-              style={homeStyles.headerProfileImage}
-              contentFit="cover"
-            />
+          <View style={homeStyles.welcomeSection}>
+            <TouchableOpacity
+              onPress={() => router.push("/profile")}
+              activeOpacity={0.8}
+            >
+              <Image
+                source={profile?.image ? { uri: profile.image } : DEFAULT_IMAGE}
+                style={homeStyles.headerProfileImage}
+                contentFit="cover"
+              />
+            </TouchableOpacity>
             <View style={homeStyles.welcomeTextContainer}>
               <Text style={homeStyles.greetingText}>
                 Hello, {profile?.name || "Guest"} 👋
               </Text>
               <Text style={homeStyles.subtitleText}>Explore your recipes</Text>
             </View>
-          </TouchableOpacity>
+          </View>
 
           <PromoBanner />
 

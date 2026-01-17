@@ -10,6 +10,9 @@ export interface Recipe {
   ingredients?: string[];
   instructions?: string[];
   originalData?: any;
+  prepTime?: string;
+  calories?: string;
+  difficulty?: string;
   [key: string]: any;
 }
 

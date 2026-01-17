@@ -7,11 +7,13 @@ import {
   TouchableOpacity,
   Switch,
   Platform,
+  Alert,
 } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { useAuth } from "@clerk/clerk-expo";
 import { useUserProfile } from "../hooks/useUserProfile";
 import { useTheme } from "../contexts/ThemeContext";
 import { COLORS } from "../constants/colors";
@@ -22,6 +24,7 @@ const DEFAULT_IMAGE = require("../assets/images/default.png");
 
 const SettingsScreen = () => {
   const router = useRouter();
+  const { signOut } = useAuth();
   const { profile } = useUserProfile();
   const { isDarkMode, toggleTheme } = useTheme();
 
@@ -30,11 +33,23 @@ const SettingsScreen = () => {
   const handleToggleNotifications = () =>
     setNotificationsEnabled((prev) => !prev);
 
-  const handlePress = (route: string) => {
+  const handlePress = async (route: string) => {
     console.log("Navigate to:", route);
     try {
       if (route === "profile") {
         router.push("/profile");
+      } else if (route === "logout") {
+        Alert.alert("Logout", "Are you sure you want to sign out?", [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Logout",
+            style: "destructive",
+            onPress: async () => {
+              await signOut();
+              router.replace("/(auth)/sign-in");
+            },
+          },
+        ]);
       }
     } catch (error) {
       console.error("Navigation error pushing route:", route, error);

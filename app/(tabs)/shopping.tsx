@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ScrollView,
   Text,
@@ -9,6 +9,7 @@ import {
   Dimensions,
   Platform,
 } from "react-native";
+import { useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
@@ -22,14 +23,18 @@ const { width } = Dimensions.get("window");
 const ShoppingScreen = () => {
   const [shoppingGroups, setShoppingGroups] = useState<ShoppingGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    loadShoppingList();
-  }, []);
+  // Use useFocusEffect to reload list whenever tab is opened
+  useFocusEffect(
+    useCallback(() => {
+      loadShoppingList(false);
+    }, [])
+  );
 
-  const loadShoppingList = async () => {
+  const loadShoppingList = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const storedList = await AsyncStorage.getItem("shoppingList");
       if (storedList) {
         const parsed = JSON.parse(storedList);
@@ -329,7 +334,7 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: "absolute",
-    bottom: 30,
+    bottom: 120,
     left: 20,
     right: 20,
     paddingVertical: 18,

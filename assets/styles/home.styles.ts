@@ -11,7 +11,7 @@ export const homeStyles = StyleSheet.create({
     backgroundColor: "#000000", // Pure black foundation
   },
   scrollContent: {
-    paddingBottom: 32,
+    paddingBottom: 110,
   },
   welcomeSection: {
     paddingHorizontal: 20,

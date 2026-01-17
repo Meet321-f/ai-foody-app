@@ -25,7 +25,7 @@ import { StyleSheet, Platform } from "react-native";
 
 const DEFAULT_IMAGE = require("../assets/images/default.png");
 
-const TABS = ["Favorite", "My Recipes", "AI Recipes"];
+const TABS = ["Favorite", "My Recipes", "AI Recipes", "Community"];
 
 const MOCK_RECIPES = [
   {
@@ -69,8 +69,12 @@ const ProfileScreen = () => {
   const [activeTab, setActiveTab] = useState("Favorite");
   const [favoriteRecipes, setFavoriteRecipes] = useState<Recipe[]>([]);
   const [generatedRecipes, setGeneratedRecipes] = useState<Recipe[]>([]);
+  const [userRecipes, setUserRecipes] = useState<Recipe[]>([]);
+  const [communityRecipes, setCommunityRecipes] = useState<Recipe[]>([]);
   const [loadingFavorites, setLoadingFavorites] = useState(false);
   const [loadingGenerated, setLoadingGenerated] = useState(false);
+  const [loadingUser, setLoadingUser] = useState(false);
+  const [loadingCommunity, setLoadingCommunity] = useState(false);
 
   // Edit State
   const [isEditing, setIsEditing] = useState(false);
@@ -130,6 +134,49 @@ const ProfileScreen = () => {
     };
     loadGenerated();
   }, [user?.id, activeTab]);
+
+  useEffect(() => {
+    const loadUserRecipes = async () => {
+      if (!user) return;
+      if (activeTab === "My Recipes") {
+        setLoadingUser(true);
+        try {
+          const response = await fetch(`${API_URL}/recipes/user/${user.id}`);
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+              setUserRecipes(result.data);
+            }
+          }
+        } catch (error) {
+          console.log("Error loading user recipes", error);
+        } finally {
+          setLoadingUser(false);
+        }
+      }
+    };
+    loadUserRecipes();
+  }, [user?.id, activeTab]);
+
+  useEffect(() => {
+    const loadCommunity = async () => {
+      if (activeTab === "Community") {
+        setLoadingCommunity(true);
+        try {
+          const response = await fetch(`${API_URL}/community/recipes`);
+          const result = await response.json();
+          if (result.success) {
+            setCommunityRecipes(result.data);
+          }
+        } catch (error) {
+          console.log("Error loading community recipes", error);
+        } finally {
+          setLoadingCommunity(false);
+        }
+      }
+    };
+    loadCommunity();
+  }, [activeTab]);
 
   const handleSaveProfile = async () => {
     if (editName.trim()) {
@@ -195,12 +242,17 @@ const ProfileScreen = () => {
       }
       return (
         <View style={profileStyles.gridContainer}>
-          {favoriteRecipes.map((recipe) => (
+          {favoriteRecipes.map((recipe, index) => (
             <TouchableOpacity
-              key={recipe.id}
+              key={`${recipe.id}-${index}`}
               style={profileStyles.recipeCard}
               activeOpacity={0.8}
-              onPress={() => router.push(`/recipe/${recipe.id}`)}
+              onPress={() =>
+                router.push({
+                  pathname: "/recipe/[id]",
+                  params: { id: recipe.id },
+                })
+              }
             >
               <Image
                 source={{ uri: recipe.image }}
@@ -283,15 +335,15 @@ const ProfileScreen = () => {
       }
       return (
         <View style={profileStyles.gridContainer}>
-          {generatedRecipes.map((recipe) => (
+          {generatedRecipes.map((recipe, index) => (
             <TouchableOpacity
-              key={recipe.id}
+              key={`${recipe.id}-${index}`}
               style={profileStyles.recipeCard}
               activeOpacity={0.8}
               onPress={() =>
                 router.push({
-                  pathname: `/recipe/${recipe.id}`,
-                  params: { fullRecipe: JSON.stringify(recipe) },
+                  pathname: "/recipe/[id]",
+                  params: { id: recipe.id, fullRecipe: JSON.stringify(recipe) },
                 })
               }
             >
@@ -349,6 +401,204 @@ const ProfileScreen = () => {
         </View>
       );
     }
+    if (activeTab === "My Recipes") {
+      if (loadingUser) {
+        return (
+          <Text style={{ color: "#fff", textAlign: "center", marginTop: 20 }}>
+            Loading your recipes...
+          </Text>
+        );
+      }
+      if (userRecipes.length === 0) {
+        return (
+          <View style={{ alignItems: "center", marginTop: 30 }}>
+            <Ionicons
+              name="restaurant-outline"
+              size={48}
+              color="rgba(255,255,255,0.2)"
+            />
+            <Text
+              style={{
+                color: "rgba(255,255,255,0.5)",
+                textAlign: "center",
+                marginTop: 10,
+              }}
+            >
+              You haven't shared any recipes yet.
+            </Text>
+          </View>
+        );
+      }
+      return (
+        <View style={profileStyles.gridContainer}>
+          {userRecipes.map((recipe, index) => (
+            <TouchableOpacity
+              key={`${recipe.id}-${index}`}
+              style={profileStyles.recipeCard}
+              activeOpacity={0.8}
+              onPress={() =>
+                router.push({
+                  pathname: "/recipe/[id]",
+                  params: { id: recipe.id },
+                })
+              }
+            >
+              <Image
+                source={{ uri: recipe.image }}
+                style={profileStyles.recipeImage}
+                contentFit="cover"
+                transition={500}
+              />
+              <LinearGradient
+                colors={["transparent", "rgba(0,0,0,0.6)", "#000000"]}
+                style={StyleSheet.absoluteFill}
+                start={{ x: 0.5, y: 0.4 }}
+                end={{ x: 0.5, y: 1 }}
+              />
+              <View
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  padding: 16,
+                }}
+              >
+                <Text style={profileStyles.recipeTitle} numberOfLines={2}>
+                  {recipe.title}
+                </Text>
+                <View style={profileStyles.recipeMeta}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Ionicons name="time" size={12} color={COLORS.primary} />
+                    <Text style={profileStyles.metaText}>
+                      {recipe.cookTime || "20m"}
+                    </Text>
+                  </View>
+                  {recipe.isPublic === "true" && (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <Ionicons
+                        name="people"
+                        size={12}
+                        color={COLORS.primary}
+                      />
+                      <Text style={profileStyles.metaText}>Public</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      );
+    }
+    if (activeTab === "Community") {
+      if (loadingCommunity) {
+        return (
+          <Text style={{ color: "#fff", textAlign: "center", marginTop: 20 }}>
+            Loading community recipes...
+          </Text>
+        );
+      }
+      if (communityRecipes.length === 0) {
+        return (
+          <View style={{ alignItems: "center", marginTop: 30 }}>
+            <Ionicons
+              name="people-outline"
+              size={48}
+              color="rgba(255,255,255,0.2)"
+            />
+            <Text
+              style={{
+                color: "rgba(255,255,255,0.5)",
+                textAlign: "center",
+                marginTop: 10,
+              }}
+            >
+              No community recipes shared yet.
+            </Text>
+          </View>
+        );
+      }
+      return (
+        <View style={profileStyles.gridContainer}>
+          {communityRecipes.map((recipe, index) => (
+            <TouchableOpacity
+              key={`${recipe.id}-${index}`}
+              style={profileStyles.recipeCard}
+              activeOpacity={0.8}
+              onPress={() =>
+                router.push({
+                  pathname: "/recipe/[id]",
+                  params: { id: recipe.id },
+                })
+              }
+            >
+              <Image
+                source={{ uri: recipe.image }}
+                style={profileStyles.recipeImage}
+                contentFit="cover"
+                transition={500}
+              />
+              <LinearGradient
+                colors={["transparent", "rgba(0,0,0,0.6)", "#000000"]}
+                style={StyleSheet.absoluteFill}
+                start={{ x: 0.5, y: 0.4 }}
+                end={{ x: 0.5, y: 1 }}
+              />
+              <View
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  padding: 16,
+                }}
+              >
+                <Text style={profileStyles.recipeTitle} numberOfLines={2}>
+                  {recipe.title}
+                </Text>
+                <View style={profileStyles.recipeMeta}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Ionicons name="time" size={12} color={COLORS.primary} />
+                    <Text style={profileStyles.metaText}>
+                      {recipe.cookTime || "20m"}
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Ionicons name="people" size={12} color={COLORS.primary} />
+                    <Text style={profileStyles.metaText}>Community</Text>
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      );
+    }
     // Blank state for other tabs
     return (
       <View
@@ -377,9 +627,10 @@ const ProfileScreen = () => {
         <StatusBar barStyle="light-content" backgroundColor="transparent" />
 
         <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Header */}
           <View style={profileStyles.header}>
-            <Text style={profileStyles.headerTitle}>Profile</Text>
+            <Text style={[profileStyles.headerTitle, { color: COLORS.gold }]}>
+              Profile
+            </Text>
             <TouchableOpacity
               style={profileStyles.iconButton}
               onPress={() => router.push("/setting")}
@@ -436,21 +687,69 @@ const ProfileScreen = () => {
           {/* Stats */}
           {/* Stats removed as requested */}
 
-          {/* Edit Profile Button */}
-          <TouchableOpacity
-            style={profileStyles.editButton}
-            activeOpacity={0.9}
-            onPress={toggleEdit}
+          {/* Action Buttons */}
+          <View
+            style={{
+              flexDirection: "row",
+              gap: 12,
+              paddingHorizontal: 20,
+              marginTop: 10,
+              marginBottom: 10,
+            }}
           >
-            <Ionicons
-              name={isEditing ? "checkmark" : "pencil"}
-              size={18}
-              color="#FFF"
-            />
-            <Text style={profileStyles.editButtonText}>
-              {isEditing ? "Save Profile" : "Edit Profile"}
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                profileStyles.editButton,
+                {
+                  flex: 1,
+                  marginHorizontal: 0,
+                  marginTop: 0,
+                  marginBottom: 0,
+                  paddingVertical: 10,
+                  backgroundColor: "rgba(255,255,255,0.05)",
+                  borderWidth: 1,
+                  borderColor: "rgba(255,255,255,0.1)",
+                },
+              ]}
+              activeOpacity={0.9}
+              onPress={toggleEdit}
+            >
+              <Ionicons
+                name={isEditing ? "checkmark" : "pencil"}
+                size={16}
+                color="#FFF"
+              />
+              <Text style={[profileStyles.editButtonText, { fontSize: 13 }]}>
+                {isEditing ? "Save" : "Edit Profile"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                profileStyles.editButton,
+                {
+                  flex: 1,
+                  marginHorizontal: 0,
+                  marginTop: 0,
+                  marginBottom: 0,
+                  paddingVertical: 10,
+                  backgroundColor: COLORS.primary,
+                },
+              ]}
+              activeOpacity={0.9}
+              onPress={() => router.push("/create-recipe")}
+            >
+              <Ionicons name="add-circle" size={16} color="#000" />
+              <Text
+                style={[
+                  profileStyles.editButtonText,
+                  { color: "#000", fontSize: 13 },
+                ]}
+              >
+                Share Recipe
+              </Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Tabs */}
           <View style={profileStyles.tabBar}>

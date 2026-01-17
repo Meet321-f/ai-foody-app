@@ -28,20 +28,12 @@ import SafeScreen from "../../components/SafeScreen";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { COLORS } from "../../constants/colors";
 import { API_URL } from "../../constants/api";
+import { UserStorageService } from "../../services/userStorage";
+import { Recipe } from "../../types";
 
 const { width } = Dimensions.get("window");
 
 // --- Types ---
-interface Recipe {
-  id: string;
-  title: string;
-  image: string;
-  prepTime: string;
-  calories: string;
-  difficulty: "Easy" | "Medium" | "Hard";
-  ingredients?: string[];
-  instructions?: string[];
-}
 
 interface Message {
   id: string;
@@ -213,16 +205,20 @@ const AiScreen = () => {
     if (!user) return;
     try {
       setLoadingHistory(true);
+
+      // Load from local storage (User Scoped Persistence)
+      const localHistory = await UserStorageService.getAiHistory(user.id);
+      setHistory(localHistory);
+
+      /* Backend Sync (Optional - prioritize local for now)
       const token = await getToken();
       const response = await fetch(`${API_URL}/ai/history/${user.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          setHistory(result.data);
-        }
+        // logic to merge
       }
+      */
     } catch (e) {
       console.error("History fetch error:", e);
     } finally {
@@ -259,6 +255,12 @@ const AiScreen = () => {
       });
 
       const result = await response.json();
+
+      if (response.status === 403) {
+        throw new Error(
+          result.error || "Daily limit reached! Please try again later."
+        );
+      }
 
       if (!result.success || !result.suggestions) {
         throw new Error(result.error || "Failed to get suggestions");
@@ -327,11 +329,37 @@ const AiScreen = () => {
 
       const result = await response.json();
 
+      if (response.status === 403) {
+        throw new Error(
+          result.error || "Daily limit reached! Please try again later."
+        );
+      }
+
       if (!result.success || !result.data) {
         throw new Error(result.error || "Failed to generate recipe");
       }
 
       const recipeData = result.data;
+      const recipeToSave: Recipe = {
+        id: recipeData.id.toString().startsWith("ai_")
+          ? recipeData.id.toString()
+          : `ai_${recipeData.id}`,
+        title: recipeData.title,
+        image:
+          recipeData.image ||
+          "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop",
+        prepTime: recipeData.prepTime || "25 min",
+        calories: recipeData.calories || "380 kcal",
+        difficulty: recipeData.difficulty || "Medium",
+        ingredients: recipeData.ingredients,
+        instructions: recipeData.instructions,
+      };
+
+      // PERSISTENCE: Save immediately to User Storage
+      if (user?.id) {
+        await UserStorageService.saveAiRecipe(user.id, recipeToSave);
+      }
+
       const botMsg: Message = {
         id: `bot-recipe-${Date.now()}`,
         text: `Here is the full recipe for **${recipeData.title}**!`,
@@ -340,18 +368,7 @@ const AiScreen = () => {
           hour: "2-digit",
           minute: "2-digit",
         }),
-        recipe: {
-          id: recipeData.id.toString(),
-          title: recipeData.title,
-          image:
-            recipeData.image ||
-            "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop",
-          prepTime: recipeData.prepTime || "25 min",
-          calories: recipeData.calories || "380 kcal",
-          difficulty: recipeData.difficulty || "Medium",
-          ingredients: recipeData.ingredients,
-          instructions: recipeData.instructions,
-        },
+        recipe: recipeToSave,
       };
 
       setMessages((prev) => [...prev, botMsg]);
@@ -648,6 +665,7 @@ const styles = StyleSheet.create({
   inputWrapper: {
     paddingHorizontal: 20,
     paddingBottom: Platform.OS === "ios" ? 20 : 10,
+    marginBottom: 90,
     backgroundColor: "transparent",
   },
   inputBar: {

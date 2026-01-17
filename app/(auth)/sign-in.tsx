@@ -17,6 +17,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { authStyles } from "../../assets/styles/auth.styles";
 import { COLORS } from "../../constants/colors";
 import SafeScreen from "../../components/SafeScreen";
+import VerifySecondFactor from "./verify-second-factor";
 
 const SignInScreen = () => {
   const router = useRouter();
@@ -25,6 +26,7 @@ const SignInScreen = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pending2FA, setPending2FA] = useState(false);
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -38,23 +40,43 @@ const SignInScreen = () => {
 
     try {
       const signInAttempt = await signIn.create({
-        identifier: email,
+        identifier: email.trim(),
         password,
       });
 
       if (signInAttempt.status === "complete") {
+        // Sign in successful without 2FA
         await setActive({ session: signInAttempt.createdSessionId });
+      } else if (signInAttempt.status === "needs_second_factor") {
+        // Password correct, now need 2FA verification
+        // Prepare the second factor (send email code)
+        await signIn.prepareSecondFactor({
+          strategy: "email_code",
+        });
+        // Show 2FA verification screen
+        setPending2FA(true);
       } else {
+        // Other statuses
         Alert.alert("Error", "Sign in failed. Please try again.");
-        console.error(JSON.stringify(signInAttempt, null, 2));
+        console.error(
+          "Unexpected status:",
+          JSON.stringify(signInAttempt, null, 2)
+        );
       }
     } catch (err: any) {
       Alert.alert("Error", err.errors?.[0]?.message || "Sign in failed");
-      console.error(JSON.stringify(err, null, 2));
+      console.error("Sign-in error:", JSON.stringify(err, null, 2));
     } finally {
       setLoading(false);
     }
   };
+
+  // Show 2FA verification screen if needed
+  if (pending2FA) {
+    return (
+      <VerifySecondFactor email={email} onBack={() => setPending2FA(false)} />
+    );
+  }
 
   return (
     <SafeScreen>
