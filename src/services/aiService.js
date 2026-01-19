@@ -42,15 +42,14 @@ export const getSuggestions = async (prompt) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openai/gpt-4o-mini",
+        model: "mistralai/mistral-small-24b-instruct-2501",
         messages: [
           {
             role: "system",
             content: "You are Chef Foody's brainstorming assistant. Given ingredients or a craving, suggest 3 creative recipe titles. Return ONLY a JSON object with a 'suggestions' array of strings."
           },
           { role: "user", content: prompt }
-        ],
-        response_format: { type: "json_object" }
+        ]
       })
     });
 
