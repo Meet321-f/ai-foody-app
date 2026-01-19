@@ -42,7 +42,7 @@ export const getSuggestions = async (prompt) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "mistralai/mistral-small-24b-instruct-2501",
+        model: "openai/gpt-4o-mini",
         messages: [
           {
             role: "system",
