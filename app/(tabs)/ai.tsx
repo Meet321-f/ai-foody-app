@@ -177,6 +177,7 @@ const AiScreen = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<Recipe[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [isPro, setIsPro] = useState(false); // Mock Pro Status
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "init",
@@ -258,7 +259,7 @@ const AiScreen = () => {
 
       if (response.status === 403) {
         throw new Error(
-          result.error || "Daily limit reached! Please try again later."
+          result.error || "Daily limit reached! Please try again later.",
         );
       }
 
@@ -324,14 +325,17 @@ const AiScreen = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ title: suggestion }),
+        body: JSON.stringify({
+          title: suggestion,
+          skipImage: !isPro, // Correctly pass the flag
+        }),
       });
 
       const result = await response.json();
 
       if (response.status === 403) {
         throw new Error(
-          result.error || "Daily limit reached! Please try again later."
+          result.error || "Daily limit reached! Please try again later.",
         );
       }
 
@@ -345,9 +349,7 @@ const AiScreen = () => {
           ? recipeData.id.toString()
           : `ai_${recipeData.id}`,
         title: recipeData.title,
-        image:
-          recipeData.image ||
-          "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop",
+        image: recipeData.image || "", // Allow empty string if no image generated
         prepTime: recipeData.prepTime || "25 min",
         calories: recipeData.calories || "380 kcal",
         difficulty: recipeData.difficulty || "Medium",

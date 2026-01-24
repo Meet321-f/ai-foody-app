@@ -404,7 +404,7 @@ const RecipeDetailScreen = () => {
         const mealData: any = await MealAPI.getMealById(recipeId);
         if (mealData) {
           const transformedRecipe = MealAPI.transformMealData(
-            mealData
+            mealData,
           ) as Recipe;
 
           const recipeWithVideo: Recipe = {
@@ -428,7 +428,7 @@ const RecipeDetailScreen = () => {
     try {
       const isLocallySaved = await UserStorageService.isFavorite(
         userId,
-        recipeId
+        recipeId,
       );
       setIsSaved(isLocallySaved);
     } catch (error) {
@@ -529,7 +529,7 @@ const RecipeDetailScreen = () => {
       if (recipeId) {
         await AsyncStorage.setItem(
           `comments_${recipeId}`,
-          JSON.stringify(updatedComments)
+          JSON.stringify(updatedComments),
         );
       }
     } catch (error) {
@@ -569,7 +569,7 @@ const RecipeDetailScreen = () => {
       }
 
       const groupIndex = shoppingGroups.findIndex(
-        (g) => g.recipeId === String(recipe.id)
+        (g) => g.recipeId === String(recipe.id),
       );
 
       if (groupIndex === -1) {
@@ -585,16 +585,16 @@ const RecipeDetailScreen = () => {
         shoppingGroups.push(newGroup);
         await AsyncStorage.setItem(
           "shoppingList",
-          JSON.stringify(shoppingGroups)
+          JSON.stringify(shoppingGroups),
         );
         Alert.alert(
           "Luxury Pantry",
-          "Ingredients added to your shopping experience."
+          "Ingredients added to your shopping experience.",
         );
       } else {
         Alert.alert(
           "Already Curated",
-          "This recipe is already in your shopping collection."
+          "This recipe is already in your shopping collection.",
         );
       }
     } catch (error) {
@@ -619,11 +619,75 @@ const RecipeDetailScreen = () => {
           {/* IMMERSIVE HERO */}
           <View style={styles.headerContainer}>
             <View style={styles.imageContainer}>
-              <Image
-                source={{ uri: recipe.image }}
-                style={styles.headerImage}
-                contentFit="cover"
-              />
+              {recipe.image ? (
+                <Image
+                  source={{ uri: recipe.image }}
+                  style={styles.headerImage}
+                  contentFit="cover"
+                />
+              ) : (
+                <View style={{ flex: 1 }}>
+                  {/* Abstract Gold/Black Pattern Placeholder */}
+                  <LinearGradient
+                    colors={["#111", "#333", "#000"]}
+                    style={StyleSheet.absoluteFill}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  />
+                  {/* Decorative Elements */}
+                  <LinearGradient
+                    colors={["transparent", COLORS.gold, "transparent"]}
+                    style={{
+                      position: "absolute",
+                      width: "200%",
+                      height: 200,
+                      top: -50,
+                      left: -50,
+                      opacity: 0.1,
+                      transform: [{ rotate: "45deg" }],
+                    }}
+                  />
+
+                  {/* Lock Overlay */}
+                  <View
+                    style={{
+                      flex: 1,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      backgroundColor: "rgba(0,0,0,0.3)",
+                    }}
+                  >
+                    <Ionicons
+                      name="lock-closed"
+                      size={48}
+                      color={COLORS.gold}
+                      style={{ marginBottom: 16 }}
+                    />
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => router.push("/subscription")}
+                      style={{
+                        backgroundColor: "rgba(20,20,20,0.8)",
+                        paddingHorizontal: 24,
+                        paddingVertical: 12,
+                        borderRadius: 25,
+                        borderWidth: 1,
+                        borderColor: COLORS.gold,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: COLORS.gold,
+                          fontWeight: "700",
+                          fontSize: 14,
+                        }}
+                      >
+                        Unlock AI Images
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
             </View>
 
             <LinearGradient
@@ -639,24 +703,77 @@ const RecipeDetailScreen = () => {
                 <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
               </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.navBtn,
-                  {
-                    backgroundColor: isSaved
-                      ? COLORS.primary
-                      : "rgba(0,0,0,0.4)",
-                  },
-                ]}
-                onPress={handleToggleSave}
-                disabled={isSaving}
-              >
-                <Ionicons
-                  name={isSaved ? "heart" : "heart-outline"}
-                  size={24}
-                  color={isSaved ? "#000" : "#FFF"}
-                />
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row", gap: 12 }}>
+                {/* Voice Cook Button (Pro) */}
+                <TouchableOpacity
+                  style={[
+                    styles.navBtn,
+                    {
+                      backgroundColor: "rgba(0,0,0,0.6)",
+                      borderColor: COLORS.gold,
+                    },
+                  ]}
+                  onPress={() => {
+                    // Mock Pro Check
+                    const isPro = false; // Change to true to test
+                    if (!isPro) {
+                      Alert.alert(
+                        "Upgrade to Pro",
+                        "Voice Assistant is a premium feature.",
+                        [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Upgrade",
+                            onPress: () => router.push("/subscription"),
+                          },
+                        ],
+                      );
+                      return;
+                    }
+                    // TODO: Activate Voice Mode
+                    Alert.alert("Voice Mode", "Starting cooking assistant...");
+                  }}
+                >
+                  <Ionicons name="mic" size={22} color={COLORS.gold} />
+                  {!false && ( // badge for lock
+                    <View
+                      style={{
+                        position: "absolute",
+                        top: -4,
+                        right: -4,
+                        backgroundColor: "#000",
+                        borderRadius: 8,
+                        padding: 2,
+                      }}
+                    >
+                      <Ionicons
+                        name="lock-closed"
+                        size={10}
+                        color={COLORS.gold}
+                      />
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.navBtn,
+                    {
+                      backgroundColor: isSaved
+                        ? COLORS.primary
+                        : "rgba(0,0,0,0.4)",
+                    },
+                  ]}
+                  onPress={handleToggleSave}
+                  disabled={isSaving}
+                >
+                  <Ionicons
+                    name={isSaved ? "heart" : "heart-outline"}
+                    size={24}
+                    color={isSaved ? "#000" : "#FFF"}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 

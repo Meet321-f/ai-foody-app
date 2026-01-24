@@ -1,41 +1,44 @@
 {
   "expo": {
     "name": "foody",
-    "slug": "foody",
+    "slug": "foody-6i61mc",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/app-icon.png",
     "scheme": "light",
     "userInterfaceStyle": "automatic",
-
     "splash": {
       "image": "./assets/images/app-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#0D0D0D"
     },
-
     "ios": {
       "supportsTablet": true
     },
-
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0D0D0D"
       },
-      "package": "com.anonymous.foody",
+      "package": "com.meet.foody",
       "usesCleartextTraffic": true
     },
-
     "web": {
       "bundler": "metro",
       "output": "static",
       "favicon": "./assets/images/app-icon.png"
     },
-
-    "plugins": ["expo-router"],
-
+    "plugins": [
+      "expo-router"
+    ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2ea132d7-b43a-43aa-aba9-07a55731d1f4"
+      }
+    },
+    "owner": "meet_0012"
   }
 }

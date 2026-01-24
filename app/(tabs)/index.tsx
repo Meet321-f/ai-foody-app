@@ -94,7 +94,7 @@ const HomeScreen = () => {
               name: cat.strCategory,
               image: cat.strCategoryThumb,
               description: cat.strCategoryDescription,
-            })
+            }),
           );
           setCategories(transformedCategories);
           saveCategories(transformedCategories);
@@ -131,16 +131,16 @@ const HomeScreen = () => {
         }
 
         try {
-          // 2. Fetch fresh data from NeonDB (10 recipes)
-          console.log("📡 Fetching 10 Indian recipes from NeonDB...");
-          const indianRecipes = await MealAPI.getIndianRecipes(10, 0);
+          // 2. Fetch fresh data from NeonDB (50 recipes to cover 1-44)
+          console.log("📡 Fetching 50 Indian recipes from NeonDB...");
+          const indianRecipes = await MealAPI.getIndianRecipes(50, 0);
 
           if (indianRecipes.length === 0) {
             console.warn("⚠️ No Indian recipes returned from API");
             if (cachedIndian.length === 0) {
               Alert.alert(
                 "No Recipes Available",
-                "Unable to load Indian recipes. Please check your internet connection and try again."
+                "Unable to load Indian recipes. Please check your internet connection and try again.",
               );
             }
             return;
@@ -152,7 +152,7 @@ const HomeScreen = () => {
 
           if (transformed.length > 0) {
             console.log(
-              `✅ Successfully loaded ${transformed.length} Indian recipes`
+              `✅ Successfully loaded ${transformed.length} Indian recipes`,
             );
             setRecipes(transformed);
             setAllIndianRecipes(transformed);
@@ -161,7 +161,7 @@ const HomeScreen = () => {
 
             // Set a random recipe as featured
             setFeaturedRecipe(
-              transformed[Math.floor(Math.random() * transformed.length)]
+              transformed[Math.floor(Math.random() * transformed.length)],
             );
           }
         } catch (error) {
@@ -169,7 +169,7 @@ const HomeScreen = () => {
           if (cachedIndian.length === 0) {
             Alert.alert(
               "Connection Error",
-              "Unable to reach the server. Please check your internet connection and try again."
+              "Unable to reach the server. Please check your internet connection and try again.",
             );
           }
         }

@@ -1,6 +1,7 @@
 import { useAuth } from "@clerk/clerk-expo";
 import { Redirect, Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import {
   Image,
   TouchableOpacity,
@@ -8,6 +9,7 @@ import {
   StyleSheet,
   Text,
   Dimensions,
+  Platform,
 } from "react-native";
 import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
@@ -55,6 +57,10 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
             });
 
             if (!isFocused && !event.defaultPrevented) {
+              // Add Haptic Feedback
+              if (Platform.OS !== "web") {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }
               navigation.navigate(route.name);
             }
           };

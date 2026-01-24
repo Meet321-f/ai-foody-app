@@ -22,10 +22,9 @@ import { Recipe } from "../types";
 import { COLORS } from "../constants/colors";
 import { BlurView } from "expo-blur";
 import { StyleSheet, Platform } from "react-native";
+import * as Haptics from "expo-haptics";
 
 const DEFAULT_IMAGE = require("../assets/images/default.png");
-
-const TABS = ["Favorite", "My Recipes", "AI Recipes", "Community"];
 
 const MOCK_RECIPES = [
   {
@@ -66,141 +65,15 @@ const ProfileScreen = () => {
   const router = useRouter();
   const { user } = useUser();
   const { profile, updateProfile, refreshProfile } = useUserProfile();
-  const [activeTab, setActiveTab] = useState("Favorite");
-  const [favoriteRecipes, setFavoriteRecipes] = useState<Recipe[]>([]);
-  const [generatedRecipes, setGeneratedRecipes] = useState<Recipe[]>([]);
-  const [userRecipes, setUserRecipes] = useState<Recipe[]>([]);
-  const [communityRecipes, setCommunityRecipes] = useState<Recipe[]>([]);
-  const [loadingFavorites, setLoadingFavorites] = useState(false);
-  const [loadingGenerated, setLoadingGenerated] = useState(false);
-  const [loadingUser, setLoadingUser] = useState(false);
-  const [loadingCommunity, setLoadingCommunity] = useState(false);
 
-  // Edit State
-  const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState("");
-
-  useEffect(() => {
-    if (profile?.name) {
-      setEditName(profile.name);
-    }
-  }, [profile]);
-
-  useEffect(() => {
-    const loadFavorites = async () => {
-      if (!user) return;
-      if (activeTab === "Favorite") {
-        // Only fetch when tab is active
-        setLoadingFavorites(true);
-        try {
-          const response = await fetch(`${API_URL}/favorites/${user.id}`);
-          if (response.ok) {
-            const favorites = await response.json();
-            const transformedFavorites = favorites.map((favorite: any) => ({
-              ...favorite,
-              id: favorite.recipeId,
-            }));
-            setFavoriteRecipes(transformedFavorites);
-          }
-        } catch (error) {
-          console.log("Error loading favorites", error);
-        } finally {
-          setLoadingFavorites(false);
-        }
-      }
-    };
-    loadFavorites();
-  }, [user?.id, activeTab]);
-
-  useEffect(() => {
-    const loadGenerated = async () => {
-      if (!user) return;
-      if (activeTab === "AI Recipes") {
-        setLoadingGenerated(true);
-        try {
-          const response = await fetch(`${API_URL}/ai/history/${user.id}`);
-          if (response.ok) {
-            const result = await response.json();
-            if (result.success) {
-              setGeneratedRecipes(result.data);
-            }
-          }
-        } catch (error) {
-          console.log("Error loading generated recipes", error);
-        } finally {
-          setLoadingGenerated(false);
-        }
-      }
-    };
-    loadGenerated();
-  }, [user?.id, activeTab]);
-
-  useEffect(() => {
-    const loadUserRecipes = async () => {
-      if (!user) return;
-      if (activeTab === "My Recipes") {
-        setLoadingUser(true);
-        try {
-          const response = await fetch(`${API_URL}/recipes/user/${user.id}`);
-          if (response.ok) {
-            const result = await response.json();
-            if (result.success) {
-              setUserRecipes(result.data);
-            }
-          }
-        } catch (error) {
-          console.log("Error loading user recipes", error);
-        } finally {
-          setLoadingUser(false);
-        }
-      }
-    };
-    loadUserRecipes();
-  }, [user?.id, activeTab]);
-
-  useEffect(() => {
-    const loadCommunity = async () => {
-      if (activeTab === "Community") {
-        setLoadingCommunity(true);
-        try {
-          const response = await fetch(`${API_URL}/community/recipes`);
-          const result = await response.json();
-          if (result.success) {
-            setCommunityRecipes(result.data);
-          }
-        } catch (error) {
-          console.log("Error loading community recipes", error);
-        } finally {
-          setLoadingCommunity(false);
-        }
-      }
-    };
-    loadCommunity();
-  }, [activeTab]);
-
-  const handleSaveProfile = async () => {
-    if (editName.trim()) {
-      await updateProfile({ name: editName });
-      setIsEditing(false);
-      refreshProfile();
-    }
-  };
-
-  const toggleEdit = () => {
-    if (isEditing) {
-      handleSaveProfile();
-    } else {
-      setEditName(profile?.name || user?.fullName || "");
-      setIsEditing(true);
-    }
-  };
+  // No additional data loading needed here as we navigate to dedicated screens
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert(
         "Permission Denied",
-        "Sorry, we need camera roll permissions to make this work!"
+        "Sorry, we need camera roll permissions to make this work!",
       );
       return;
     }
@@ -210,6 +83,7 @@ const ProfileScreen = () => {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
+      // base64: true, // If you plan to upload to Cloudinary directly or send to backend
     });
 
     if (!result.canceled) {
@@ -218,403 +92,39 @@ const ProfileScreen = () => {
     }
   };
 
-  const renderContent = () => {
-    if (activeTab === "Favorite") {
-      if (loadingFavorites) {
-        return (
-          <Text style={{ color: "#fff", textAlign: "center", marginTop: 20 }}>
-            Loading favorites...
-          </Text>
+  const menuItems = [
+    {
+      icon: "person",
+      label: "Edit Profile",
+      onPress: () => router.push("/edit-profile"),
+    },
+    {
+      icon: "heart",
+      label: "Favorites",
+      onPress: () => router.push("/(tabs)/favorites"),
+    },
+    {
+      icon: "book",
+      label: "My Recipes",
+      onPress: () => router.push("/my-recipes"),
+    },
+    {
+      icon: "people",
+      label: "Community Hub",
+      onPress: () => {
+        Alert.alert(
+          "Coming Soon",
+          "The Community Hub is currently under construction. Stay tuned for updates!",
+          [{ text: "OK" }],
         );
-      }
-      if (favoriteRecipes.length === 0) {
-        return (
-          <Text
-            style={{
-              color: "rgba(255,255,255,0.5)",
-              textAlign: "center",
-              marginTop: 20,
-            }}
-          >
-            No favorites yet.
-          </Text>
-        );
-      }
-      return (
-        <View style={profileStyles.gridContainer}>
-          {favoriteRecipes.map((recipe, index) => (
-            <TouchableOpacity
-              key={`${recipe.id}-${index}`}
-              style={profileStyles.recipeCard}
-              activeOpacity={0.8}
-              onPress={() =>
-                router.push({
-                  pathname: "/recipe/[id]",
-                  params: { id: recipe.id },
-                })
-              }
-            >
-              <Image
-                source={{ uri: recipe.image }}
-                style={profileStyles.recipeImage}
-                contentFit="cover"
-                transition={500}
-              />
-              <LinearGradient
-                colors={["transparent", "rgba(0,0,0,0.6)", "#000000"]}
-                style={StyleSheet.absoluteFill}
-                start={{ x: 0.5, y: 0.4 }}
-                end={{ x: 0.5, y: 1 }}
-              />
-              <TouchableOpacity style={profileStyles.heartButton}>
-                <Ionicons name="heart" size={18} color={COLORS.primary} />
-              </TouchableOpacity>
-
-              <View
-                style={{
-                  position: "absolute",
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  padding: 16,
-                }}
-              >
-                <Text style={profileStyles.recipeTitle} numberOfLines={2}>
-                  {recipe.title}
-                </Text>
-                <View style={profileStyles.recipeMeta}>
-                  {recipe.time && (
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 4,
-                      }}
-                    >
-                      <Ionicons name="time" size={12} color={COLORS.primary} />
-                      <Text style={profileStyles.metaText}>{recipe.time}</Text>
-                    </View>
-                  )}
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 4,
-                    }}
-                  >
-                    <Ionicons name="flash" size={12} color={COLORS.primary} />
-                    <Text style={profileStyles.metaText}>Pro</Text>
-                  </View>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      );
-    }
-    if (activeTab === "AI Recipes") {
-      if (loadingGenerated) {
-        return (
-          <Text style={{ color: "#fff", textAlign: "center", marginTop: 20 }}>
-            Loading AI recipes...
-          </Text>
-        );
-      }
-      if (generatedRecipes.length === 0) {
-        return (
-          <Text
-            style={{
-              color: "rgba(255,255,255,0.5)",
-              textAlign: "center",
-              marginTop: 20,
-            }}
-          >
-            No AI recipes generated yet.
-          </Text>
-        );
-      }
-      return (
-        <View style={profileStyles.gridContainer}>
-          {generatedRecipes.map((recipe, index) => (
-            <TouchableOpacity
-              key={`${recipe.id}-${index}`}
-              style={profileStyles.recipeCard}
-              activeOpacity={0.8}
-              onPress={() =>
-                router.push({
-                  pathname: "/recipe/[id]",
-                  params: { id: recipe.id, fullRecipe: JSON.stringify(recipe) },
-                })
-              }
-            >
-              <Image
-                source={{ uri: recipe.image }}
-                style={profileStyles.recipeImage}
-                contentFit="cover"
-                transition={500}
-              />
-              <LinearGradient
-                colors={["transparent", "rgba(0,0,0,0.6)", "#000000"]}
-                style={StyleSheet.absoluteFill}
-                start={{ x: 0.5, y: 0.4 }}
-                end={{ x: 0.5, y: 1 }}
-              />
-              <View
-                style={{
-                  position: "absolute",
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  padding: 16,
-                }}
-              >
-                <Text style={profileStyles.recipeTitle} numberOfLines={2}>
-                  {recipe.title}
-                </Text>
-                <View style={profileStyles.recipeMeta}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 4,
-                    }}
-                  >
-                    <Ionicons name="time" size={12} color={COLORS.primary} />
-                    <Text style={profileStyles.metaText}>
-                      {recipe.cookTime || "20m"}
-                    </Text>
-                  </View>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 4,
-                    }}
-                  >
-                    <Ionicons name="flash" size={12} color={COLORS.primary} />
-                    <Text style={profileStyles.metaText}>AI</Text>
-                  </View>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      );
-    }
-    if (activeTab === "My Recipes") {
-      if (loadingUser) {
-        return (
-          <Text style={{ color: "#fff", textAlign: "center", marginTop: 20 }}>
-            Loading your recipes...
-          </Text>
-        );
-      }
-      if (userRecipes.length === 0) {
-        return (
-          <View style={{ alignItems: "center", marginTop: 30 }}>
-            <Ionicons
-              name="restaurant-outline"
-              size={48}
-              color="rgba(255,255,255,0.2)"
-            />
-            <Text
-              style={{
-                color: "rgba(255,255,255,0.5)",
-                textAlign: "center",
-                marginTop: 10,
-              }}
-            >
-              You haven't shared any recipes yet.
-            </Text>
-          </View>
-        );
-      }
-      return (
-        <View style={profileStyles.gridContainer}>
-          {userRecipes.map((recipe, index) => (
-            <TouchableOpacity
-              key={`${recipe.id}-${index}`}
-              style={profileStyles.recipeCard}
-              activeOpacity={0.8}
-              onPress={() =>
-                router.push({
-                  pathname: "/recipe/[id]",
-                  params: { id: recipe.id },
-                })
-              }
-            >
-              <Image
-                source={{ uri: recipe.image }}
-                style={profileStyles.recipeImage}
-                contentFit="cover"
-                transition={500}
-              />
-              <LinearGradient
-                colors={["transparent", "rgba(0,0,0,0.6)", "#000000"]}
-                style={StyleSheet.absoluteFill}
-                start={{ x: 0.5, y: 0.4 }}
-                end={{ x: 0.5, y: 1 }}
-              />
-              <View
-                style={{
-                  position: "absolute",
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  padding: 16,
-                }}
-              >
-                <Text style={profileStyles.recipeTitle} numberOfLines={2}>
-                  {recipe.title}
-                </Text>
-                <View style={profileStyles.recipeMeta}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 4,
-                    }}
-                  >
-                    <Ionicons name="time" size={12} color={COLORS.primary} />
-                    <Text style={profileStyles.metaText}>
-                      {recipe.cookTime || "20m"}
-                    </Text>
-                  </View>
-                  {recipe.isPublic === "true" && (
-                    <View
-                      style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 4,
-                      }}
-                    >
-                      <Ionicons
-                        name="people"
-                        size={12}
-                        color={COLORS.primary}
-                      />
-                      <Text style={profileStyles.metaText}>Public</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      );
-    }
-    if (activeTab === "Community") {
-      if (loadingCommunity) {
-        return (
-          <Text style={{ color: "#fff", textAlign: "center", marginTop: 20 }}>
-            Loading community recipes...
-          </Text>
-        );
-      }
-      if (communityRecipes.length === 0) {
-        return (
-          <View style={{ alignItems: "center", marginTop: 30 }}>
-            <Ionicons
-              name="people-outline"
-              size={48}
-              color="rgba(255,255,255,0.2)"
-            />
-            <Text
-              style={{
-                color: "rgba(255,255,255,0.5)",
-                textAlign: "center",
-                marginTop: 10,
-              }}
-            >
-              No community recipes shared yet.
-            </Text>
-          </View>
-        );
-      }
-      return (
-        <View style={profileStyles.gridContainer}>
-          {communityRecipes.map((recipe, index) => (
-            <TouchableOpacity
-              key={`${recipe.id}-${index}`}
-              style={profileStyles.recipeCard}
-              activeOpacity={0.8}
-              onPress={() =>
-                router.push({
-                  pathname: "/recipe/[id]",
-                  params: { id: recipe.id },
-                })
-              }
-            >
-              <Image
-                source={{ uri: recipe.image }}
-                style={profileStyles.recipeImage}
-                contentFit="cover"
-                transition={500}
-              />
-              <LinearGradient
-                colors={["transparent", "rgba(0,0,0,0.6)", "#000000"]}
-                style={StyleSheet.absoluteFill}
-                start={{ x: 0.5, y: 0.4 }}
-                end={{ x: 0.5, y: 1 }}
-              />
-              <View
-                style={{
-                  position: "absolute",
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  padding: 16,
-                }}
-              >
-                <Text style={profileStyles.recipeTitle} numberOfLines={2}>
-                  {recipe.title}
-                </Text>
-                <View style={profileStyles.recipeMeta}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 4,
-                    }}
-                  >
-                    <Ionicons name="time" size={12} color={COLORS.primary} />
-                    <Text style={profileStyles.metaText}>
-                      {recipe.cookTime || "20m"}
-                    </Text>
-                  </View>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 4,
-                    }}
-                  >
-                    <Ionicons name="people" size={12} color={COLORS.primary} />
-                    <Text style={profileStyles.metaText}>Community</Text>
-                  </View>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      );
-    }
-    // Blank state for other tabs
-    return (
-      <View
-        style={{
-          flex: 1,
-          height: 200,
-          justifyContent: "center",
-          alignItems: "center",
-        }}
-      >
-        <Text style={{ color: "rgba(255,255,255,0.3)", fontSize: 14 }}>
-          No content available yet.
-        </Text>
-      </View>
-    );
-  };
+      },
+    },
+    {
+      icon: "settings",
+      label: "Settings",
+      onPress: () => router.push("/setting"),
+    },
+  ];
 
   const userEmail =
     user?.primaryEmailAddress?.emailAddress || profile?.email || "No Email";
@@ -622,162 +132,305 @@ const ProfileScreen = () => {
   return (
     <SafeScreen>
       <View
-        style={[profileStyles.container, { backgroundColor: "transparent" }]}
+        style={[
+          profileStyles.container,
+          { backgroundColor: "#000", paddingHorizontal: 20 },
+        ]}
       >
-        <StatusBar barStyle="light-content" backgroundColor="transparent" />
+        <StatusBar barStyle="light-content" backgroundColor="#000" />
 
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={profileStyles.header}>
-            <Text style={[profileStyles.headerTitle, { color: COLORS.gold }]}>
-              Profile
-            </Text>
-            <TouchableOpacity
-              style={profileStyles.iconButton}
-              onPress={() => router.push("/setting")}
+        {/* HEADER */}
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingVertical: 10,
+          }}
+        >
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={24} color={COLORS.gold} />
+          </TouchableOpacity>
+          <Text
+            style={{
+              fontFamily: Platform.OS === "ios" ? "Georgia" : "serif",
+              fontSize: 20,
+              fontWeight: "900",
+              color: COLORS.gold,
+              letterSpacing: 2,
+            }}
+          >
+            FOODY
+          </Text>
+          <TouchableOpacity onPress={() => {}}>
+            <Ionicons name="ellipsis-vertical" size={24} color={COLORS.gold} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 100 }}
+        >
+          {/* UPGRADE BANNER */}
+          <TouchableOpacity
+            activeOpacity={0.95}
+            onPress={() => {
+              if (Platform.OS !== "web")
+                Haptics.notificationAsync(
+                  Haptics.NotificationFeedbackType.Success,
+                );
+              router.push("/subscription");
+            }}
+            style={{
+              backgroundColor: "#D4AF37", // Gold
+              borderRadius: 24,
+              padding: 24,
+              marginTop: 20,
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              shadowColor: "#D4AF37",
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.3,
+              shadowRadius: 20,
+              elevation: 10,
+            }}
+          >
+            <View style={{ flex: 1, paddingRight: 10 }}>
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: "900",
+                  color: "#000",
+                  marginBottom: 8,
+                }}
+              >
+                Upgrade to Gold Pro
+              </Text>
+              <Text
+                style={{
+                  fontSize: 13,
+                  color: "rgba(0,0,0,0.7)",
+                  lineHeight: 18,
+                  marginBottom: 16,
+                  fontWeight: "500",
+                }}
+              >
+                Access 1,000+ exclusive chef-curated recipes.
+              </Text>
+
+              <View
+                style={{
+                  backgroundColor: "#000",
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderRadius: 30,
+                  alignSelf: "flex-start",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <Ionicons name="ribbon" size={16} color={COLORS.gold} />
+                <Text
+                  style={{ color: "#FFF", fontWeight: "700", fontSize: 12 }}
+                >
+                  Join Elite
+                </Text>
+              </View>
+            </View>
+
+            {/* 3D Icon Placeholder */}
+            <View
+              style={{
+                width: 80,
+                height: 80,
+                backgroundColor: "#000",
+                borderRadius: 16,
+                justifyContent: "center",
+                alignItems: "center",
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.1)",
+              }}
             >
-              <Ionicons name="settings-sharp" size={20} color="#FFF" />
-            </TouchableOpacity>
-          </View>
+              <Ionicons name="trophy" size={40} color={COLORS.gold} />
+              <LinearGradient
+                colors={["transparent", "rgba(212,175,55,0.3)"]}
+                style={StyleSheet.absoluteFill}
+              />
+            </View>
+          </TouchableOpacity>
 
-          {/* Bio Section */}
-          <View style={profileStyles.bioSection}>
-            <View style={profileStyles.imageContainer}>
-              <TouchableOpacity onPress={handlePickImage} activeOpacity={0.8}>
+          {/* AVATAR SECTION */}
+          <View
+            style={{ alignItems: "center", marginTop: 40, marginBottom: 40 }}
+          >
+            <View style={{ position: "relative" }}>
+              {/* Glow Effect */}
+              <View
+                style={{
+                  position: "absolute",
+                  top: -10,
+                  left: -10,
+                  right: -10,
+                  bottom: -10,
+                  borderRadius: 100,
+                  borderWidth: 2,
+                  borderColor: COLORS.gold,
+                  shadowColor: COLORS.gold,
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 1,
+                  shadowRadius: 20,
+                  elevation: 20,
+                  opacity: 0.5,
+                }}
+              />
+
+              <TouchableOpacity onPress={handlePickImage}>
                 <Image
                   source={
                     profile?.image ? { uri: profile.image } : DEFAULT_IMAGE
                   }
-                  style={profileStyles.profileImage}
+                  style={{
+                    width: 120,
+                    height: 120,
+                    borderRadius: 60,
+                    borderWidth: 3,
+                    borderColor: COLORS.gold,
+                  }}
                   contentFit="cover"
                 />
-                <View
-                  style={{
-                    position: "absolute",
-                    bottom: 0,
-                    right: 0,
-                    backgroundColor: "rgba(0,0,0,0.6)",
-                    padding: 6,
-                    borderRadius: 20,
-                  }}
-                >
-                  <Ionicons name="camera" size={20} color="#FFF" />
-                </View>
               </TouchableOpacity>
-            </View>
 
-            {isEditing ? (
-              <TextInput
-                style={profileStyles.editInput}
-                value={editName}
-                onChangeText={setEditName}
-                autoFocus
-                placeholder="Enter Name"
-                placeholderTextColor="rgba(255,255,255,0.4)"
-              />
-            ) : (
-              <Text style={profileStyles.name}>
-                {profile?.name || user?.fullName || "Guest User"}
-              </Text>
-            )}
-
-            <Text style={profileStyles.email}>{userEmail}</Text>
-            <Text style={profileStyles.bio}>Vegan Baker & Food Enthusiast</Text>
-          </View>
-
-          {/* Stats */}
-          {/* Stats removed as requested */}
-
-          {/* Action Buttons */}
-          <View
-            style={{
-              flexDirection: "row",
-              gap: 12,
-              paddingHorizontal: 20,
-              marginTop: 10,
-              marginBottom: 10,
-            }}
-          >
-            <TouchableOpacity
-              style={[
-                profileStyles.editButton,
-                {
-                  flex: 1,
-                  marginHorizontal: 0,
-                  marginTop: 0,
-                  marginBottom: 0,
-                  paddingVertical: 10,
-                  backgroundColor: "rgba(255,255,255,0.05)",
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.1)",
-                },
-              ]}
-              activeOpacity={0.9}
-              onPress={toggleEdit}
-            >
-              <Ionicons
-                name={isEditing ? "checkmark" : "pencil"}
-                size={16}
-                color="#FFF"
-              />
-              <Text style={[profileStyles.editButtonText, { fontSize: 13 }]}>
-                {isEditing ? "Save" : "Edit Profile"}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                profileStyles.editButton,
-                {
-                  flex: 1,
-                  marginHorizontal: 0,
-                  marginTop: 0,
-                  marginBottom: 0,
-                  paddingVertical: 10,
-                  backgroundColor: COLORS.primary,
-                },
-              ]}
-              activeOpacity={0.9}
-              onPress={() => router.push("/create-recipe")}
-            >
-              <Ionicons name="add-circle" size={16} color="#000" />
-              <Text
-                style={[
-                  profileStyles.editButtonText,
-                  { color: "#000", fontSize: 13 },
-                ]}
-              >
-                Share Recipe
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Tabs */}
-          <View style={profileStyles.tabBar}>
-            {TABS.map((tab) => (
-              <TouchableOpacity
-                key={tab}
-                style={profileStyles.tabItem}
-                onPress={() => setActiveTab(tab)}
+              {/* Pro Badge */}
+              <View
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  right: 10,
+                  backgroundColor: COLORS.gold,
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderRadius: 12,
+                  borderWidth: 2,
+                  borderColor: "#000",
+                }}
               >
                 <Text
-                  style={[
-                    profileStyles.tabText,
-                    activeTab === tab && profileStyles.activeTypeText,
-                  ]}
+                  style={{ fontSize: 10, fontWeight: "900", color: "#000" }}
                 >
-                  {tab}
+                  PRO
                 </Text>
-                {activeTab === tab && (
-                  <View style={profileStyles.activeTabIndicator} />
-                )}
+              </View>
+            </View>
+
+            <Text
+              style={{
+                color: "#FFF",
+                fontSize: 24,
+                fontWeight: "700",
+                marginTop: 20,
+                marginBottom: 4,
+              }}
+            >
+              {profile?.name || user?.fullName || "Chef Guest"}
+            </Text>
+            <Text
+              style={{
+                color: COLORS.gold,
+                fontSize: 14,
+                fontWeight: "600",
+                marginBottom: 8,
+              }}
+            >
+              Artisan Baker & Flavor Enthusiast
+            </Text>
+            <Text
+              style={{
+                color: "rgba(255,255,255,0.3)",
+                fontSize: 12,
+                fontWeight: "600",
+                textTransform: "uppercase",
+                letterSpacing: 1,
+              }}
+            >
+              MEMBER SINCE OCT 2023
+            </Text>
+          </View>
+
+          {/* MENU LIST */}
+          <Text
+            style={{
+              color: "rgba(255,255,255,0.4)",
+              fontSize: 12,
+              fontWeight: "800",
+              marginBottom: 16,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+            }}
+          >
+            Account & Community
+          </Text>
+
+          <View style={{ gap: 16 }}>
+            {menuItems.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                activeOpacity={0.8}
+                onPress={() => {
+                  if (Platform.OS !== "web") Haptics.selectionAsync();
+                  item.onPress();
+                }}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  backgroundColor: "transparent",
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 16,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 16,
+                      backgroundColor: "rgba(255,255,255,0.08)",
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Ionicons
+                      name={item.icon as any}
+                      size={20}
+                      color={COLORS.gold}
+                    />
+                  </View>
+                  <Text
+                    style={{ fontSize: 16, fontWeight: "600", color: "#FFF" }}
+                  >
+                    {item.label}
+                  </Text>
+                </View>
+                <Ionicons
+                  name="chevron-forward"
+                  size={20}
+                  color="rgba(255,255,255,0.3)"
+                />
               </TouchableOpacity>
             ))}
           </View>
 
-          {/* Content */}
-          {renderContent()}
-
-          <View style={{ height: 100 }} />
+          {/* Legacy Tab Content Rendering (Hidden/Conditional if needed, or simplified) */}
+          {/* For now, simplified to just the menu list as per design. 
+              The actual content logic (Favorites/Recipes) would likely move to separate screens 
+              or a nested navigation stack if this "Menu" style is strictly followed.
+          */}
         </ScrollView>
       </View>
     </SafeScreen>
