@@ -3,7 +3,7 @@ import cors from "cors";
 import { ENV } from "./config/env.js";
 import { db } from "./config/db.js";
 import { favoritesTable, recipesTable, commentsTable, profilesTable, coustomeRecipesTable } from "./db/schema.js";
-import { and, eq, desc, gt, sql } from "drizzle-orm";
+import { and, eq, desc, gt, sql, asc, gte, lte } from "drizzle-orm";
 import job from "./config/cron.js";
 import { generateRecipe, getSuggestions, generateFullRecipeData, generateRecipeImage } from "./services/aiService.js";
 import { clerkAuth } from "./services/authService.js";
@@ -464,7 +464,8 @@ app.get("/api/indian-recipes", async (req, res) => {
     const recipes = await db
       .select()
       .from(coustomeRecipesTable)
-      .orderBy(sql`RANDOM()`)
+      .where(and(gte(coustomeRecipesTable.id, 1), lte(coustomeRecipesTable.id, 44)))
+      .orderBy(asc(coustomeRecipesTable.id))
       .limit(limit)
       .offset(offset);
 
