@@ -3,11 +3,41 @@ import { Recipe } from "../types";
 const BASE_URL = "https://www.themealdb.com/api/json/v1/1";
 
 export const MealAPI = {
+  // Helper for retrying requests (Good for cold starts or network blips)
+  fetchWithRetry: async (
+    url: string,
+    options: RequestInit = {},
+    retries = 3,
+    backoff = 1000,
+  ) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          // If 404, maybe it's not ready yet, or truly missing. We retry 500s mostly.
+          // But user said "not found" appears when it shouldn't, so we might want to retry 404s briefly.
+          if (response.status === 404) {
+            throw new Error(`HTTP 404: Not Found`);
+          }
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response;
+      } catch (err) {
+        if (i === retries - 1) throw err;
+        console.warn(
+          `Attempt ${i + 1} failed for ${url}. Retrying in ${backoff}ms...`,
+        );
+        await new Promise((r) => setTimeout(r, backoff));
+      }
+    }
+    throw new Error("Max retries reached");
+  },
+
   // search meal by name
   searchMealsByName: async (query: string) => {
     try {
       const response = await fetch(
-        `${BASE_URL}/search.php?s=${encodeURIComponent(query)}`
+        `${BASE_URL}/search.php?s=${encodeURIComponent(query)}`,
       );
       const data = await response.json();
       return data.meals || [];
@@ -71,7 +101,7 @@ export const MealAPI = {
   filterByIngredient: async (ingredient: string) => {
     try {
       const response = await fetch(
-        `${BASE_URL}/filter.php?i=${encodeURIComponent(ingredient)}`
+        `${BASE_URL}/filter.php?i=${encodeURIComponent(ingredient)}`,
       );
       const data = await response.json();
       return data.meals || [];
@@ -85,7 +115,7 @@ export const MealAPI = {
   filterByCategory: async (category: string) => {
     try {
       const response = await fetch(
-        `${BASE_URL}/filter.php?c=${encodeURIComponent(category)}`
+        `${BASE_URL}/filter.php?c=${encodeURIComponent(category)}`,
       );
       const data = await response.json();
       return data.meals || [];
@@ -96,20 +126,16 @@ export const MealAPI = {
   },
 
   // GET Indian Recipes from our NeonDB Backend
-  getIndianRecipes: async (limit: number = 10, offset: number = 0) => {
+  getIndianRecipes: async (limit: number = 10, userId: string = "guest") => {
     try {
       const { API_URL } = await import("../constants/api");
-      const url = `${API_URL}/indian-recipes?limit=${limit}&offset=${offset}`;
+      const url = `${API_URL}/indian-recipes?limit=${limit}&userId=${userId}`;
       console.log(`🔍 Fetching Indian recipes from: ${url}`);
 
-      const response = await fetch(url, {
+      const response = await MealAPI.fetchWithRetry(url, {
         method: "GET",
         headers: { "Content-Type": "application/json" },
       });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
 
       const data = await response.json();
       console.log(`✅ Fetched ${data.length} Indian recipes from NeonDB`);
@@ -126,7 +152,7 @@ export const MealAPI = {
   getAiRecipeById: async (id: string) => {
     try {
       const { API_URL } = await import("../constants/api");
-      const response = await fetch(`${API_URL}/recipes/${id}`);
+      const response = await MealAPI.fetchWithRetry(`${API_URL}/recipes/${id}`);
       const data = await response.json();
       return data || null;
     } catch (error) {

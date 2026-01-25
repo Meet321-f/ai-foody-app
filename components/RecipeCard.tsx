@@ -18,7 +18,9 @@ import { RecipeCardProps } from "../types";
 const { width } = Dimensions.get("window");
 const cardWidth = (width - 48) / 2;
 
-export default function RecipeCard({ recipe }: RecipeCardProps) {
+import React from "react";
+
+function RecipeCard({ recipe }: RecipeCardProps) {
   const router = useRouter();
   const { colors, isDarkMode } = useTheme();
 
@@ -200,3 +202,5 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
     </TouchableOpacity>
   );
 }
+
+export default React.memo(RecipeCard);

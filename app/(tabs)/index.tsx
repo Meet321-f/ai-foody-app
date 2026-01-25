@@ -131,9 +131,12 @@ const HomeScreen = () => {
         }
 
         try {
-          // 2. Fetch fresh data from NeonDB (50 recipes to cover 1-44)
-          console.log("📡 Fetching 50 Indian recipes from NeonDB...");
-          const indianRecipes = await MealAPI.getIndianRecipes(50, 0);
+          // 2. Fetch fresh data from NeonDB (Limit 10 as per requirement)
+          const userId = profile?.id?.toString() || "guest";
+          console.log(
+            `📡 Fetching 10 Indian recipes for ${userId} from NeonDB...`,
+          );
+          const indianRecipes = await MealAPI.getIndianRecipes(10, userId);
 
           if (indianRecipes.length === 0) {
             console.warn("⚠️ No Indian recipes returned from API");
@@ -223,7 +226,13 @@ const HomeScreen = () => {
   return (
     <View style={[homeStyles.container, { backgroundColor: "transparent" }]}>
       <SafeScreen>
-        <ScrollView
+        <FlatList
+          data={recipes}
+          renderItem={({ item }) => <RecipeCard recipe={item} />}
+          keyExtractor={(item) => item.id.toString()}
+          numColumns={2}
+          columnWrapperStyle={homeStyles.row}
+          contentContainerStyle={homeStyles.recipesGrid}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -232,75 +241,76 @@ const HomeScreen = () => {
               tintColor={COLORS.primary}
             />
           }
-          contentContainerStyle={homeStyles.scrollContent}
-        >
-          {/* WELCOME SECTION */}
-          <View style={homeStyles.welcomeSection}>
-            <TouchableOpacity
-              onPress={() => router.push("/profile")}
-              activeOpacity={0.8}
-            >
-              <Image
-                source={profile?.image ? { uri: profile.image } : DEFAULT_IMAGE}
-                style={homeStyles.headerProfileImage}
-                contentFit="cover"
-              />
-            </TouchableOpacity>
-            <View style={homeStyles.welcomeTextContainer}>
-              <Text style={homeStyles.greetingText}>
-                Hello, {profile?.name || "Guest"} 👋
-              </Text>
-              <Text style={homeStyles.subtitleText}>Explore your recipes</Text>
-            </View>
-          </View>
-
-          <PromoBanner />
-
-          <RecipeTypeSelector
-            selectedType={recipeType}
-            onSelectType={handleTypeSelect}
-          />
-
-          {categories.length > 0 && (
-            <CategoryFilter
-              categories={categories}
-              selectedCategory={selectedCategory}
-              onSelectCategory={handleCategorySelect}
-            />
-          )}
-
-          <View style={homeStyles.recipesSection}>
-            <View style={homeStyles.sectionHeader}>
-              <Text style={homeStyles.sectionTitle}>
-                {recipeType === "indian" ? "Indian Recipes" : selectedCategory}
-              </Text>
-            </View>
-
-            {recipes.length > 0 ? (
-              <FlatList
-                data={recipes}
-                renderItem={({ item }) => <RecipeCard recipe={item} />}
-                keyExtractor={(item) => item.id.toString()}
-                numColumns={2}
-                columnWrapperStyle={homeStyles.row}
-                contentContainerStyle={homeStyles.recipesGrid}
-                scrollEnabled={false}
-              />
-            ) : (
-              <View style={homeStyles.emptyState}>
-                <Ionicons
-                  name="restaurant-outline"
-                  size={64}
-                  color={COLORS.textLight}
-                />
-                <Text style={homeStyles.emptyTitle}>No recipes found</Text>
-                <Text style={homeStyles.emptyDescription}>
-                  Try a different category
-                </Text>
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={5}
+          removeClippedSubviews={true}
+          ListHeaderComponent={
+            <>
+              {/* WELCOME SECTION */}
+              <View style={homeStyles.welcomeSection}>
+                <TouchableOpacity
+                  onPress={() => router.push("/profile")}
+                  activeOpacity={0.8}
+                >
+                  <Image
+                    source={
+                      profile?.image ? { uri: profile.image } : DEFAULT_IMAGE
+                    }
+                    style={homeStyles.headerProfileImage}
+                    contentFit="cover"
+                  />
+                </TouchableOpacity>
+                <View style={homeStyles.welcomeTextContainer}>
+                  <Text style={homeStyles.greetingText}>
+                    Hello, {profile?.name || "Guest"} 👋
+                  </Text>
+                  <Text style={homeStyles.subtitleText}>
+                    Explore your recipes
+                  </Text>
+                </View>
               </View>
-            )}
-          </View>
-        </ScrollView>
+
+              <PromoBanner />
+
+              <RecipeTypeSelector
+                selectedType={recipeType}
+                onSelectType={handleTypeSelect}
+              />
+
+              {categories.length > 0 && (
+                <CategoryFilter
+                  categories={categories}
+                  selectedCategory={selectedCategory}
+                  onSelectCategory={handleCategorySelect}
+                />
+              )}
+
+              <View style={homeStyles.recipesSection}>
+                <View style={homeStyles.sectionHeader}>
+                  <Text style={homeStyles.sectionTitle}>
+                    {recipeType === "indian"
+                      ? "Indian Recipes"
+                      : selectedCategory}
+                  </Text>
+                </View>
+              </View>
+            </>
+          }
+          ListEmptyComponent={
+            <View style={homeStyles.emptyState}>
+              <Ionicons
+                name="restaurant-outline"
+                size={64}
+                color={COLORS.textLight}
+              />
+              <Text style={homeStyles.emptyTitle}>No recipes found</Text>
+              <Text style={homeStyles.emptyDescription}>
+                Try a different category
+              </Text>
+            </View>
+          }
+        />
       </SafeScreen>
     </View>
   );
