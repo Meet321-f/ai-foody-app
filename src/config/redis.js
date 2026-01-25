@@ -2,7 +2,11 @@ import Redis from "ioredis";
 import { ENV } from "./env.js";
 
 // Uses REDIS_URL from env if available, or defaults to the provided Redis Cloud instance
-const redisUrl = ENV.REDIS_URL || "redis://:uIWYyRq49ObbfOKZFmAl0dvR6DPkDmLa@redis-13020.crce276.ap-south-1-3.ec2.cloud.redislabs.com:13020";
+const redisUrl = ENV.REDIS_URL;
+
+if (!redisUrl) {
+  console.warn("⚠️ REDIS_URL not found in environment variables. Redis operations may fail.");
+}
 
 const redisClient = new Redis(redisUrl, {
   maxRetriesPerRequest: 3,

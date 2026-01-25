@@ -3,45 +3,16 @@ import cors from "cors";
 import { ENV } from "./config/env.js";
 import { db } from "./config/db.js";
 import { favoritesTable, recipesTable, commentsTable, profilesTable, coustomeRecipesTable } from "./db/schema.js";
-import { and, eq, desc, gt, sql, asc, gte, lte } from "drizzle-orm";
+import { and, eq, desc, gt, sql, asc, gte, lte, inArray } from "drizzle-orm";
 import job from "./config/cron.js";
 import { generateRecipe, getSuggestions, generateFullRecipeData, generateRecipeImage } from "./services/aiService.js";
 import { clerkAuth } from "./services/authService.js";
 import redisClient from "./config/redis.js";
-import cluster from "node:cluster";
-import os from "node:os";
-
 const app = express();
 const PORT = ENV.PORT || 5001;
 
-// Startup Integrity Checks
-console.log("------------------- CREDENTIALS CHECK -------------------");
-console.log("OPENROUTER_API_KEY:", ENV.OPENROUTER_API_KEY ? `✅ Detected (Len: ${ENV.OPENROUTER_API_KEY.length})` : "❌ MISSING");
-console.log("CLERK_SECRET_KEY:  ", ENV.CLERK_SECRET_KEY ? `✅ Detected (Len: ${ENV.CLERK_SECRET_KEY.length})` : "❌ MISSING");
-console.log("---------------------------------------------------------");
-
-const numCPUs = os.cpus().length;
-
-if (cluster.isPrimary) {
-  console.log(`Primary ${process.pid} is running`);
-  console.log(`Forking for ${numCPUs} CPUs...`);
-
-  if (ENV.NODE_ENV === "production") job.start();
-
-  // Fork workers.
-  for (let i = 0; i < numCPUs; i++) {
-    cluster.fork();
-  }
-
-  cluster.on("exit", (worker, code, signal) => {
-    console.log(`worker ${worker.process.pid} died`);
-    cluster.fork();
-  });
-}
-// Workers share the TCP connection in this app instance
-// Note: We let the app definition run for both (overhead is minimal), but only workers listen.
-// Or we can rely on !isPrimary for logic, but to minimize diff:
-// We will only guard app.listen.
+// SINGLE PROCESS MODE for atomic Redis operations
+if (ENV.NODE_ENV === "production") job.start();
 
 // Original Cron line removed from here
 
@@ -444,39 +415,84 @@ app.post("/api/ai/generate-recipe", clerkAuth, async (req, res) => {
   }
 });
 
-// Custom/Indian Recipes from NeonDB (Cached)
+// Custom/Indian Recipes from NeonDB (Cached & Fair Randomized Fetching)
 app.get("/api/indian-recipes", async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
-    const offset = parseInt(req.query.offset) || 0;
-    const cacheKey = `indian:recipes:${limit}:${offset}`;
+    const userId = req.query.userId || "guest";
+    const queueKey = `indian:queue:${userId}`;
 
-    // Check Cache
+    // 1. Try to pop IDs from Redis Queue
+    let recipeIds = [];
     try {
-      const cachedData = await redisClient.get(cacheKey);
-      if (cachedData) {
-        return res.status(200).json(JSON.parse(cachedData));
+      recipeIds = await redisClient.lPop(queueKey, limit);
+      // Ensure we always have an array (older ioredis/redis might return null or string)
+      if (recipeIds && !Array.isArray(recipeIds)) {
+        recipeIds = [recipeIds];
       }
     } catch (e) {
-      console.warn("Redis cache get failed", e.message);
+      console.warn("Redis lPop failed", e.message);
+    }
+
+    // 2. If queue is empty or has fewer than requested, generate/refill
+    if (!recipeIds || recipeIds.length < limit) {
+      console.log(`[Indian Recipes] Queue deficit for ${userId} (${recipeIds?.length || 0}/${limit}), refilling...`);
+      
+      const allIds = Array.from({ length: 140 }, (_, i) => i + 1);
+      // Fisher-Yates Shuffle
+      for (let i = allIds.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allIds[i], allIds[j]] = [allIds[j], allIds[i]];
+      }
+
+      try {
+        // Only refill if actually empty or nearly empty to avoid constant resets
+        const currentLen = await redisClient.lLen(queueKey);
+        if (currentLen === 0) {
+          await redisClient.rPush(queueKey, allIds.map(String));
+          await redisClient.expire(queueKey, 86400 * 7); // 7 days
+        }
+        
+        // Get the extra ones we need
+        const needed = limit - (recipeIds ? recipeIds.length : 0);
+        const extra = await redisClient.lPop(queueKey, needed);
+        
+        if (extra) {
+          const extraArr = Array.isArray(extra) ? extra : [extra];
+          recipeIds = [...(recipeIds || []), ...extraArr];
+        }
+      } catch (e) {
+        console.warn("Redis refill failed", e.message);
+        // Fallback: shuffle and take limit
+        if (!recipeIds || recipeIds.length === 0) {
+          recipeIds = allIds.slice(0, limit).map(String);
+        }
+      }
+    }
+
+    // 3. Final safety check: if we still don't have enough, just get random ones
+    if (!recipeIds || recipeIds.length === 0) {
+        recipeIds = Array.from({ length: limit }, () => Math.floor(Math.random() * 140) + 1).map(String);
+    }
+
+    // 3. Fetch from DB using retrieved IDs
+    const numericIds = recipeIds.map(id => parseInt(id));
+    
+    if (numericIds.length === 0) {
+      return res.status(200).json([]);
     }
 
     const recipes = await db
       .select()
       .from(coustomeRecipesTable)
-      .where(and(gte(coustomeRecipesTable.id, 1), lte(coustomeRecipesTable.id, 44)))
-      .orderBy(asc(coustomeRecipesTable.id))
-      .limit(limit)
-      .offset(offset);
+      .where(inArray(coustomeRecipesTable.id, numericIds));
 
-    // Set Cache (60 Seconds - Short TTL to allow fresh results on refresh)
-    try {
-      await redisClient.set(cacheKey, JSON.stringify(recipes), "EX", 60);
-    } catch (e) {
-      console.warn("Redis cache set failed", e.message);
-    }
-    
-    res.status(200).json(recipes);
+    // Sort the results back to the random order we selected
+    const sortedRecipes = numericIds.map(id => 
+      recipes.find(r => r.id === id)
+    ).filter(Boolean);
+
+    res.status(200).json(sortedRecipes);
   } catch (error) {
     console.log("Error fetching indian recipes", error);
     res.status(500).json({ error: "Something went wrong" });
@@ -629,8 +645,6 @@ app.get("/api/recipes/user/:userId", clerkAuth, async (req, res) => {
   }
 });
 
-if (!cluster.isPrimary) {
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Worker ${process.pid} started. Server running on PORT: ${PORT}`);
-  });
-}
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on PORT: ${PORT}`);
+});
