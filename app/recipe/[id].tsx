@@ -648,44 +648,7 @@ const RecipeDetailScreen = () => {
                     }}
                   />
 
-                  {/* Lock Overlay */}
-                  <View
-                    style={{
-                      flex: 1,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      backgroundColor: "rgba(0,0,0,0.3)",
-                    }}
-                  >
-                    <Ionicons
-                      name="lock-closed"
-                      size={48}
-                      color={COLORS.gold}
-                      style={{ marginBottom: 16 }}
-                    />
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      onPress={() => router.push("/subscription")}
-                      style={{
-                        backgroundColor: "rgba(20,20,20,0.8)",
-                        paddingHorizontal: 24,
-                        paddingVertical: 12,
-                        borderRadius: 25,
-                        borderWidth: 1,
-                        borderColor: COLORS.gold,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: COLORS.gold,
-                          fontWeight: "700",
-                          fontSize: 14,
-                        }}
-                      >
-                        Unlock AI Images
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+                  {/* No lock overlay needed, all features free */}
                 </View>
               )}
             </View>
@@ -704,7 +667,6 @@ const RecipeDetailScreen = () => {
               </TouchableOpacity>
 
               <View style={{ flexDirection: "row", gap: 12 }}>
-                {/* Voice Cook Button (Pro) */}
                 <TouchableOpacity
                   style={[
                     styles.navBtn,
@@ -714,45 +676,11 @@ const RecipeDetailScreen = () => {
                     },
                   ]}
                   onPress={() => {
-                    // Mock Pro Check
-                    const isPro = false; // Change to true to test
-                    if (!isPro) {
-                      Alert.alert(
-                        "Upgrade to Pro",
-                        "Voice Assistant is a premium feature.",
-                        [
-                          { text: "Cancel", style: "cancel" },
-                          {
-                            text: "Upgrade",
-                            onPress: () => router.push("/subscription"),
-                          },
-                        ],
-                      );
-                      return;
-                    }
-                    // TODO: Activate Voice Mode
+                    // Activate Voice Mode directly (Free for all)
                     Alert.alert("Voice Mode", "Starting cooking assistant...");
                   }}
                 >
                   <Ionicons name="mic" size={22} color={COLORS.gold} />
-                  {!false && ( // badge for lock
-                    <View
-                      style={{
-                        position: "absolute",
-                        top: -4,
-                        right: -4,
-                        backgroundColor: "#000",
-                        borderRadius: 8,
-                        padding: 2,
-                      }}
-                    >
-                      <Ionicons
-                        name="lock-closed"
-                        size={10}
-                        color={COLORS.gold}
-                      />
-                    </View>
-                  )}
                 </TouchableOpacity>
 
                 <TouchableOpacity

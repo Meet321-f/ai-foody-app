@@ -171,96 +171,6 @@ const ProfileScreen = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 100 }}
         >
-          {/* UPGRADE BANNER */}
-          <TouchableOpacity
-            activeOpacity={0.95}
-            onPress={() => {
-              if (Platform.OS !== "web")
-                Haptics.notificationAsync(
-                  Haptics.NotificationFeedbackType.Success,
-                );
-              router.push("/subscription");
-            }}
-            style={{
-              backgroundColor: "#D4AF37", // Gold
-              borderRadius: 24,
-              padding: 24,
-              marginTop: 20,
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              shadowColor: "#D4AF37",
-              shadowOffset: { width: 0, height: 10 },
-              shadowOpacity: 0.3,
-              shadowRadius: 20,
-              elevation: 10,
-            }}
-          >
-            <View style={{ flex: 1, paddingRight: 10 }}>
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontWeight: "900",
-                  color: "#000",
-                  marginBottom: 8,
-                }}
-              >
-                Upgrade to Gold Pro
-              </Text>
-              <Text
-                style={{
-                  fontSize: 13,
-                  color: "rgba(0,0,0,0.7)",
-                  lineHeight: 18,
-                  marginBottom: 16,
-                  fontWeight: "500",
-                }}
-              >
-                Access 1,000+ exclusive chef-curated recipes.
-              </Text>
-
-              <View
-                style={{
-                  backgroundColor: "#000",
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderRadius: 30,
-                  alignSelf: "flex-start",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                <Ionicons name="ribbon" size={16} color={COLORS.gold} />
-                <Text
-                  style={{ color: "#FFF", fontWeight: "700", fontSize: 12 }}
-                >
-                  Join Elite
-                </Text>
-              </View>
-            </View>
-
-            {/* 3D Icon Placeholder */}
-            <View
-              style={{
-                width: 80,
-                height: 80,
-                backgroundColor: "#000",
-                borderRadius: 16,
-                justifyContent: "center",
-                alignItems: "center",
-                borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.1)",
-              }}
-            >
-              <Ionicons name="trophy" size={40} color={COLORS.gold} />
-              <LinearGradient
-                colors={["transparent", "rgba(212,175,55,0.3)"]}
-                style={StyleSheet.absoluteFill}
-              />
-            </View>
-          </TouchableOpacity>
-
           {/* AVATAR SECTION */}
           <View
             style={{ alignItems: "center", marginTop: 40, marginBottom: 40 }}
@@ -301,27 +211,6 @@ const ProfileScreen = () => {
                   contentFit="cover"
                 />
               </TouchableOpacity>
-
-              {/* Pro Badge */}
-              <View
-                style={{
-                  position: "absolute",
-                  bottom: 0,
-                  right: 10,
-                  backgroundColor: COLORS.gold,
-                  paddingHorizontal: 8,
-                  paddingVertical: 4,
-                  borderRadius: 12,
-                  borderWidth: 2,
-                  borderColor: "#000",
-                }}
-              >
-                <Text
-                  style={{ fontSize: 10, fontWeight: "900", color: "#000" }}
-                >
-                  PRO
-                </Text>
-              </View>
             </View>
 
             <Text
