@@ -28,8 +28,7 @@
       "favicon": "./assets/images/app-icon.png"
     },
     "plugins": [
-      "expo-router",
-      "@react-native-voice/voice"
+      "expo-router"
     ],
     "experiments": {
       "typedRoutes": true
