@@ -8,6 +8,9 @@ import job from "./config/cron.js";
 import { generateRecipe, getSuggestions, generateFullRecipeData, generateRecipeImage } from "./services/aiService.js";
 import { clerkAuth } from "./services/authService.js";
 import redisClient from "./config/redis.js";
+import { firestore } from "./config/firebase.js";
+import { doc, getDoc, collection } from "firebase/firestore";
+
 const app = express();
 const PORT = ENV.PORT || 5001;
 
@@ -415,7 +418,7 @@ app.post("/api/ai/generate-recipe", clerkAuth, async (req, res) => {
   }
 });
 
-// Custom/Indian Recipes from NeonDB (Cached & Fair Randomized Fetching)
+// Custom/Indian Recipes from Firebase Firestore (Cached & Fair Randomized Fetching)
 app.get("/api/indian-recipes", async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
@@ -426,7 +429,6 @@ app.get("/api/indian-recipes", async (req, res) => {
     let recipeIds = [];
     try {
       recipeIds = await redisClient.lPop(queueKey, limit);
-      // Ensure we always have an array (older ioredis/redis might return null or string)
       if (recipeIds && !Array.isArray(recipeIds)) {
         recipeIds = [recipeIds];
       }
@@ -434,11 +436,11 @@ app.get("/api/indian-recipes", async (req, res) => {
       console.warn("Redis lPop failed", e.message);
     }
 
-    // 2. If queue is empty or has fewer than requested, generate/refill
+    // 2. If queue is empty or low, refill with the 140 known IDs
     if (!recipeIds || recipeIds.length < limit) {
-      console.log(`[Indian Recipes] Queue deficit for ${userId} (${recipeIds?.length || 0}/${limit}), refilling...`);
+      console.log(`[Indian Recipes] Firestore Queue deficit for ${userId} (${recipeIds?.length || 0}/${limit}), refilling...`);
       
-      const allIds = Array.from({ length: 140 }, (_, i) => i + 1);
+      const allIds = Array.from({ length: 140 }, (_, i) => String(i + 1));
       // Fisher-Yates Shuffle
       for (let i = allIds.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -446,14 +448,12 @@ app.get("/api/indian-recipes", async (req, res) => {
       }
 
       try {
-        // Only refill if actually empty or nearly empty to avoid constant resets
         const currentLen = await redisClient.lLen(queueKey);
         if (currentLen === 0) {
-          await redisClient.rPush(queueKey, allIds.map(String));
+          await redisClient.rPush(queueKey, allIds);
           await redisClient.expire(queueKey, 86400 * 7); // 7 days
         }
         
-        // Get the extra ones we need
         const needed = limit - (recipeIds ? recipeIds.length : 0);
         const extra = await redisClient.lPop(queueKey, needed);
         
@@ -463,38 +463,36 @@ app.get("/api/indian-recipes", async (req, res) => {
         }
       } catch (e) {
         console.warn("Redis refill failed", e.message);
-        // Fallback: shuffle and take limit
         if (!recipeIds || recipeIds.length === 0) {
-          recipeIds = allIds.slice(0, limit).map(String);
+          recipeIds = allIds.slice(0, limit);
         }
       }
     }
 
-    // 3. Final safety check: if we still don't have enough, just get random ones
+    // 3. Final safety check
     if (!recipeIds || recipeIds.length === 0) {
-        recipeIds = Array.from({ length: limit }, () => Math.floor(Math.random() * 140) + 1).map(String);
+        recipeIds = Array.from({ length: limit }, () => String(Math.floor(Math.random() * 140) + 1));
     }
 
-    // 3. Fetch from DB using retrieved IDs
-    const numericIds = recipeIds.map(id => parseInt(id));
+    // 4. Fetch from Firebase Firestore using retrieved IDs
+    console.log(`[Indian Recipes] Fetching ${recipeIds.length} recipes from Firestore for user ${userId}`);
+    const recipesCollection = collection(firestore, "indian_recipes");
     
-    if (numericIds.length === 0) {
-      return res.status(200).json([]);
-    }
+    const recipePromises = recipeIds.map(async (id) => {
+      const docRef = doc(recipesCollection, id);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return { id: parseInt(id), ...docSnap.data() };
+      }
+      return null;
+    });
 
-    const recipes = await db
-      .select()
-      .from(coustomeRecipesTable)
-      .where(inArray(coustomeRecipesTable.id, numericIds));
+    const recipes = await Promise.all(recipePromises);
+    const filteredRecipes = recipes.filter(Boolean);
 
-    // Sort the results back to the random order we selected
-    const sortedRecipes = numericIds.map(id => 
-      recipes.find(r => r.id === id)
-    ).filter(Boolean);
-
-    res.status(200).json(sortedRecipes);
+    res.status(200).json(filteredRecipes);
   } catch (error) {
-    console.log("Error fetching indian recipes", error);
+    console.log("Error fetching indian recipes from Firestore", error);
     res.status(500).json({ error: "Something went wrong" });
   }
 });
