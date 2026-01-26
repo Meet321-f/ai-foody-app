@@ -148,6 +148,27 @@ export const MealAPI = {
     }
   },
 
+  // Search Indian Recipes from our Backend
+  searchIndianRecipes: async (query: string) => {
+    try {
+      const { API_URL } = await import("../constants/api");
+      const url = `${API_URL}/indian-recipes/search?q=${encodeURIComponent(query)}`;
+      console.log(`🔍 Searching Indian recipes: ${url}`);
+
+      const response = await MealAPI.fetchWithRetry(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      const data = await response.json();
+      console.log(`✅ Found ${data.length} Indian recipes matching "${query}"`);
+      return data || [];
+    } catch (error) {
+      console.error("❌ Error searching indian recipes:", error);
+      return [];
+    }
+  },
+
   // GET Indian Recipe by ID from NeonDB
   getAiRecipeById: async (id: string) => {
     try {

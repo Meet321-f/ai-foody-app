@@ -117,24 +117,42 @@ const SearchScreen = () => {
   const performSearch = async (query: string): Promise<Recipe[]> => {
     try {
       if (!query.trim()) {
-        const randomMeals = await MealAPI.getRandomMeals(8); // Reduced to 8 for reliability
-        return randomMeals
+        const randomMeals = await MealAPI.getRandomMeals(6);
+        const randomIndian = await MealAPI.getIndianRecipes(4);
+
+        const transformedMeals = randomMeals
           .map((meal: any) => MealAPI.transformMealData(meal))
           .filter((meal: any) => meal !== null) as Recipe[];
+
+        const transformedIndian = randomIndian
+          .map((recipe: any) => MealAPI.transformCustomRecipe(recipe))
+          .filter((recipe: any) => recipe !== null) as Recipe[];
+
+        return [...transformedIndian, ...transformedMeals];
       }
 
-      const nameResults = await MealAPI.searchMealsByName(query);
-      let results = nameResults || [];
+      // Parallel search for better performance
+      const [nameResults, indianResults] = await Promise.all([
+        MealAPI.searchMealsByName(query),
+        MealAPI.searchIndianRecipes(query),
+      ]);
 
-      if (results.length === 0) {
+      let results = nameResults || [];
+      const transformedIndian = (indianResults || [])
+        .map((recipe: any) => MealAPI.transformCustomRecipe(recipe))
+        .filter((recipe: any) => recipe !== null) as Recipe[];
+
+      if (results.length === 0 && transformedIndian.length === 0) {
         const ingredientResults = await MealAPI.filterByIngredient(query);
         results = ingredientResults || [];
       }
 
-      return results
+      const transformedMeals = results
         .slice(0, 12)
         .map((meal: any) => MealAPI.transformMealData(meal))
         .filter((meal: any) => meal !== null) as Recipe[];
+
+      return [...transformedIndian, ...transformedMeals];
     } catch (e) {
       console.error("Search failed:", e);
       return [];
