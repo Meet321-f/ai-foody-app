@@ -10,6 +10,7 @@ import {
   Platform,
 } from "react-native";
 import * as Speech from "expo-speech";
+import Voice from "@react-native-voice/voice";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { useEffect, useState } from "react";
@@ -83,6 +84,8 @@ const RecipeDetailScreen = () => {
   const [commentInput, setCommentInput] = useState<string>("");
   const [playingVideo, setPlayingVideo] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [currentStepIndex, setCurrentStepIndex] = useState(-1);
 
   const { user } = useUser();
   const userId = user?.id;
@@ -460,16 +463,127 @@ const RecipeDetailScreen = () => {
     loadComments();
     checkIfSaved();
 
+    Voice.onSpeechResults = onSpeechResults;
+    Voice.onSpeechError = onSpeechError;
+    Voice.onSpeechEnd = onSpeechEnd;
+
     return () => {
-      // Stop speech when leaving the screen
+      // Stop everything when leaving the screen
       Speech.stop();
+      Voice.destroy().then(Voice.removeAllListeners);
     };
   }, [recipeId, userId]);
 
+  const onSpeechResults = (e: any) => {
+    if (e.value && e.value.length > 0) {
+      const results = e.value.map((v: string) => v.toLowerCase());
+      console.log("Voice Results:", results);
+
+      const text = results[0];
+      if (
+        text.includes("start") ||
+        text.includes("shuru") ||
+        text.includes("बजाओ")
+      ) {
+        handleVoiceCommand("start");
+      } else if (
+        text.includes("next") ||
+        text.includes("agla") ||
+        text.includes("अगला")
+      ) {
+        handleVoiceCommand("next");
+      } else if (
+        text.includes("stop") ||
+        text.includes("ruko") ||
+        text.includes("रोको")
+      ) {
+        handleVoiceCommand("stop");
+      }
+    }
+  };
+
+  const onSpeechError = (e: any) => {
+    console.warn("Speech recognition error:", e);
+    // Restart listening if it's still active
+    if (isListening) {
+      startListening();
+    }
+  };
+
+  const onSpeechEnd = () => {
+    // Restart listening to keep the "hands-free" mode active
+    if (isListening) {
+      startListening();
+    }
+  };
+
+  const handleVoiceCommand = (command: "start" | "next" | "stop") => {
+    if (command === "start") {
+      readStep(0);
+    } else if (command === "next") {
+      readStep(currentStepIndex + 1);
+    } else if (command === "stop") {
+      stopVoiceControl();
+    }
+  };
+
+  const readStep = (index: number) => {
+    if (
+      !recipe ||
+      !recipe.instructions ||
+      index >= recipe.instructions.length
+    ) {
+      if (
+        index >= (recipe?.instructions?.length || 0) &&
+        recipe?.instructions?.length
+      ) {
+        Speech.speak("You have completed all steps. Enjoy your meal!");
+      }
+      return;
+    }
+
+    setCurrentStepIndex(index);
+    setIsSpeaking(true);
+
+    const stepText = `Step ${index + 1}: ${recipe.instructions[index]}`;
+
+    Speech.stop().then(() => {
+      Speech.speak(stepText, {
+        onDone: () => {
+          setIsSpeaking(false);
+          // Keep listening for "next"
+        },
+        onError: () => setIsSpeaking(false),
+        onStopped: () => setIsSpeaking(false),
+        rate: 0.9,
+      });
+    });
+  };
+
+  const startListening = async () => {
+    try {
+      await Voice.start("en-US");
+    } catch (e) {
+      console.error("Failed to start listening:", e);
+    }
+  };
+
+  const stopVoiceControl = async () => {
+    Speech.stop();
+    setIsSpeaking(false);
+    setIsListening(false);
+    setCurrentStepIndex(-1);
+    try {
+      await Voice.stop();
+      await Voice.destroy();
+    } catch (e) {
+      console.error("Failed to stop voice control:", e);
+    }
+  };
+
   const toggleVoiceAssistant = async () => {
-    if (isSpeaking) {
-      Speech.stop();
-      setIsSpeaking(false);
+    if (isListening) {
+      await stopVoiceControl();
       return;
     }
 
@@ -481,19 +595,13 @@ const RecipeDetailScreen = () => {
       return;
     }
 
-    setIsSpeaking(true);
-
-    // Join instructions with pauses
-    const fullText = `Recipe instructions for ${recipe.title}. 
-    
-    ${recipe.instructions.join(". ")}`;
-
-    Speech.speak(fullText, {
-      onDone: () => setIsSpeaking(false),
-      onError: () => setIsSpeaking(false),
-      onStopped: () => setIsSpeaking(false),
-      rate: 0.9,
-    });
+    setIsListening(true);
+    Alert.alert(
+      "Hands-Free Mode On",
+      "Say 'Start' to begin, 'Next' for the next step, and 'Stop' to end.",
+      [{ text: "OK" }],
+    );
+    startListening();
   };
 
   const getYouTubeEmbedUrl = (url: string): string => {
@@ -710,22 +818,44 @@ const RecipeDetailScreen = () => {
                   style={[
                     styles.navBtn,
                     {
-                      backgroundColor: "rgba(0,0,0,0.6)",
+                      backgroundColor: isListening
+                        ? COLORS.gold
+                        : "rgba(0,0,0,0.6)",
                       borderColor: COLORS.gold,
                     },
                   ]}
                   onPress={toggleVoiceAssistant}
                 >
                   <Ionicons
-                    name={isSpeaking ? "volume-high" : "mic"}
+                    name={
+                      isListening
+                        ? "mic"
+                        : isSpeaking
+                          ? "volume-high"
+                          : "mic-outline"
+                    }
                     size={22}
-                    color={isSpeaking ? "#000" : COLORS.gold}
+                    color={isListening ? "#000" : COLORS.gold}
                   />
-                  {isSpeaking && (
+                  {isListening && (
                     <LinearGradient
                       colors={[COLORS.gold, "#FFD700"]}
                       style={StyleSheet.absoluteFill}
                     />
+                  )}
+                  {isSpeaking && !isListening && (
+                    <View
+                      style={{
+                        position: "absolute",
+                        top: -5,
+                        right: -5,
+                        backgroundColor: COLORS.gold,
+                        borderRadius: 10,
+                        padding: 2,
+                      }}
+                    >
+                      <Ionicons name="volume-high" size={10} color="#000" />
+                    </View>
                   )}
                 </TouchableOpacity>
 
