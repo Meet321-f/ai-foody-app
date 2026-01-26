@@ -9,7 +9,9 @@ import {
   Dimensions,
   Platform,
 } from "react-native";
+import * as Speech from "expo-speech";
 import { useLocalSearchParams, useRouter } from "expo-router";
+
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/clerk-expo";
 import { API_URL } from "../../constants/api";
@@ -41,7 +43,8 @@ interface Recipe {
   cookTime?: string;
   servings?: number | string;
   category?: string;
-  area?: string | null;
+  area?: string;
+
   ingredients?: any[];
   instructions?: string[];
   youtubeUrl?: string | null;
@@ -79,6 +82,7 @@ const RecipeDetailScreen = () => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [commentInput, setCommentInput] = useState<string>("");
   const [playingVideo, setPlayingVideo] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const { user } = useUser();
   const userId = user?.id;
@@ -455,7 +459,42 @@ const RecipeDetailScreen = () => {
     loadRecipeDetail();
     loadComments();
     checkIfSaved();
+
+    return () => {
+      // Stop speech when leaving the screen
+      Speech.stop();
+    };
   }, [recipeId, userId]);
+
+  const toggleVoiceAssistant = async () => {
+    if (isSpeaking) {
+      Speech.stop();
+      setIsSpeaking(false);
+      return;
+    }
+
+    if (!recipe || !recipe.instructions || recipe.instructions.length === 0) {
+      Alert.alert(
+        "No instructions",
+        "No instructions found to read for this recipe.",
+      );
+      return;
+    }
+
+    setIsSpeaking(true);
+
+    // Join instructions with pauses
+    const fullText = `Recipe instructions for ${recipe.title}. 
+    
+    ${recipe.instructions.join(". ")}`;
+
+    Speech.speak(fullText, {
+      onDone: () => setIsSpeaking(false),
+      onError: () => setIsSpeaking(false),
+      onStopped: () => setIsSpeaking(false),
+      rate: 0.9,
+    });
+  };
 
   const getYouTubeEmbedUrl = (url: string): string => {
     const parts = url.split("v=");
@@ -675,12 +714,19 @@ const RecipeDetailScreen = () => {
                       borderColor: COLORS.gold,
                     },
                   ]}
-                  onPress={() => {
-                    // Activate Voice Mode directly (Free for all)
-                    Alert.alert("Voice Mode", "Starting cooking assistant...");
-                  }}
+                  onPress={toggleVoiceAssistant}
                 >
-                  <Ionicons name="mic" size={22} color={COLORS.gold} />
+                  <Ionicons
+                    name={isSpeaking ? "volume-high" : "mic"}
+                    size={22}
+                    color={isSpeaking ? "#000" : COLORS.gold}
+                  />
+                  {isSpeaking && (
+                    <LinearGradient
+                      colors={[COLORS.gold, "#FFD700"]}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  )}
                 </TouchableOpacity>
 
                 <TouchableOpacity
