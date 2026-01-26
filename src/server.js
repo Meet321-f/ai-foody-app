@@ -9,7 +9,8 @@ import { generateRecipe, getSuggestions, generateFullRecipeData, generateRecipeI
 import { clerkAuth } from "./services/authService.js";
 import redisClient from "./config/redis.js";
 import { firestore } from "./config/firebase.js";
-import { doc, getDoc, collection } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs } from "firebase/firestore";
+
 
 const app = express();
 const PORT = ENV.PORT || 5001;
@@ -496,6 +497,38 @@ app.get("/api/indian-recipes", async (req, res) => {
     res.status(500).json({ error: "Something went wrong" });
   }
 });
+
+// Search Indian Recipes from Firebase Firestore
+app.get("/api/indian-recipes/search", async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) {
+      return res.status(400).json({ error: "Query parameter 'q' is required" });
+    }
+
+    console.log(`[Indian Recipes Search] Searching for: ${q}`);
+    const recipesCollection = collection(firestore, "indian_recipes");
+    const querySnapshot = await getDocs(recipesCollection);
+    
+    const searchLower = q.toLowerCase();
+    const results = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      const title = (data.title || data.name || "").toLowerCase();
+      if (title.includes(searchLower)) {
+        results.push({ id: parseInt(doc.id), ...data });
+      }
+    });
+
+    console.log(`[Indian Recipes Search] Found ${results.length} results for: ${q}`);
+    res.status(200).json(results.slice(0, 20)); // Limit to top 20 results
+  } catch (error) {
+    console.log("Error searching indian recipes from Firestore", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
 
 app.get("/api/indian-recipes/:id", async (req, res) => {
   try {
