@@ -42,7 +42,7 @@ export const getSuggestions = async (prompt) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "mistralai/mistral-small-24b-instruct-2501",
+        model: "openai/gpt-4o-mini",
         messages: [
           {
             role: "system",
@@ -99,7 +99,7 @@ export const generateFullRecipeData = async (title, context = "") => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
+        model: "openai/gpt-4o-mini",
         messages: [
           {
             role: "system",
