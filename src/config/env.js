@@ -26,6 +26,7 @@ export const ENV = {
   OPENROUTER_API_KEY: requireEnv("OPENROUTER_API_KEY"),
   CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY || process.env.EXPO_CLERK_SECRET_KEY,
   REDIS_URL: process.env.REDIS_URL,
+  REDIS_PASSWORD: process.env.REDIS_PASSWORD,
 };
 
 // Final validation for Clerk key

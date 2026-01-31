@@ -1,15 +1,22 @@
 import Redis from "ioredis";
 import { ENV } from "./env.js";
 
-// Uses REDIS_URL from env if available, or defaults to the provided Redis Cloud instance
+// Uses REDIS_URL from env if available. 
 const redisUrl = ENV.REDIS_URL;
 
 if (!redisUrl) {
   console.warn("⚠️ REDIS_URL not found in environment variables. Redis operations may fail.");
+} else {
+  // Mask password in logs
+  console.log("🔌 Connecting to Redis:", redisUrl.replace(/:[^:@]*@/, ":****@"));
 }
 
 const redisClient = new Redis(redisUrl, {
   maxRetriesPerRequest: 3,
+  // Explicitly use password if provided separately
+  password: ENV.REDIS_PASSWORD || undefined, 
+  // Enable TLS for 'rediss://' (common in production/Render)
+  tls: redisUrl && redisUrl.startsWith("rediss://") ? { rejectUnauthorized: false } : undefined,
   retryStrategy(times) {
     const delay = Math.min(times * 50, 2000);
     return delay;
