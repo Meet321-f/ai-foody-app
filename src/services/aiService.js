@@ -99,7 +99,7 @@ export const generateFullRecipeData = async (title, context = "") => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openai/gpt-5-nano",
+        model: "meta-llama/llama-3.3-70b-instruct:free",
         messages: [
           {
             role: "system",
