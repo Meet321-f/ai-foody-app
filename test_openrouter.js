@@ -1,10 +1,10 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-const API_KEY = process.env.OPENROUTER_API_KEY;
+const API_KEY = process.env.OPENROUTER_MISTRAL_KEY;
 
 async function testOpenRouter() {
-    console.log("Testing OpenRouter with model: mistralai/mistral-small-24b-instruct-2501 (simple)");
+    console.log("Testing OpenRouter with model: mistralai/mistral-small-24b-instruct-2501");
     try {
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
             method: "POST",
@@ -13,7 +13,7 @@ async function testOpenRouter() {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                model: "openai/gpt-5-nano",
+                model: "mistralai/mistral-small-24b-instruct-2501",
                 messages: [
                     { role: "user", content: "Hi" }
                 ]
