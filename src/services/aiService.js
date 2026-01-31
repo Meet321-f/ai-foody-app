@@ -36,13 +36,13 @@ export const getSuggestions = async (prompt) => {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${ENV.OPENROUTER_API_KEY}`,
+        "Authorization": `Bearer ${ENV.OPENROUTER_MISTRAL_KEY}`,
         "HTTP-Referer": "https://foody.app",
         "X-Title": "Foody AI",
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openai/gpt-4o-mini",
+        model: "mistralai/mistral-small-24b-instruct-2501",
         messages: [
           {
             role: "system",
@@ -93,7 +93,7 @@ export const generateFullRecipeData = async (title, context = "") => {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${ENV.OPENROUTER_API_KEY}`,
+        "Authorization": `Bearer ${ENV.OPENROUTER_OPENAI_KEY}`,
         "HTTP-Referer": "https://foody.app",
         "X-Title": "Foody AI",
         "Content-Type": "application/json"

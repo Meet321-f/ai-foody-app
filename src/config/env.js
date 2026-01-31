@@ -23,7 +23,8 @@ export const ENV = {
   NODE_ENV: process.env.NODE_ENV || "development",
 
   DATABASE_URL: requireEnv("DATABASE_URL"),
-  OPENROUTER_API_KEY: requireEnv("OPENROUTER_API_KEY"),
+  OPENROUTER_OPENAI_KEY: process.env.OPENROUTER_OPENAI_KEY,
+  OPENROUTER_MISTRAL_KEY: process.env.OPENROUTER_MISTRAL_KEY,
   CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY || process.env.EXPO_CLERK_SECRET_KEY,
   REDIS_URL: process.env.REDIS_URL,
   REDIS_PASSWORD: process.env.REDIS_PASSWORD,
