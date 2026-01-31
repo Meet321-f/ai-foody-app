@@ -99,7 +99,7 @@ export const generateFullRecipeData = async (title, context = "") => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openai/gpt-4o-mini",
+        model: "openai/gpt-5-nano",
         messages: [
           {
             role: "system",
