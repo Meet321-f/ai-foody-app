@@ -337,19 +337,47 @@ app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
     const finalIngredients = ingredient || ingredients || recipeResult.data.ingredients || [];
     const finalInstructions = steps || instructions || recipeResult.data.instructions || [];
     const finalCookTime = cookTime || prepTime || "20 min";
-    const finalServings = String(serveTo || servings || "1-2");
+    // Verify AI output
+    if (!finalIngredients.length || !finalInstructions.length) {
+      console.warn("⚠️ AI returned empty ingredients/instructions:", recipeResult.data);
+    }
+
+    console.log("📝 Inserting into DB:", {
+      title: recipeResult.data.title || title,
+      userId,
+      ingredientsCount: finalIngredients.length,
+      instructionsCount: finalInstructions.length
+    });
 
     // Save to DB
-    const [savedRecipe] = await db.insert(recipesTable).values({
-      title: recipeResult.data.title || title,
-      description: `Calories: ${calories || "Unknown"}. Serving: ${finalServings}`,
-      ingredients: finalIngredients,
-      instructions: finalInstructions,
-      cookTime: finalCookTime,
-      servings: finalServings,
-      userId: userId,
-      image: imageResult.imageUrl || null
-    }).returning();
+    let savedRecipe;
+    try {
+      [savedRecipe] = await db.insert(recipesTable).values({
+        title: recipeResult.data.title || title,
+        description: `Calories: ${calories || "Unknown"}. Serving: ${finalServings}`,
+        ingredients: finalIngredients,
+        instructions: finalInstructions,
+        cookTime: finalCookTime,
+        servings: finalServings,
+        userId: userId,
+        // Check if DB requires null or undefined? strict schema says 'image' is text, so null is fine.
+        image: imageResult.imageUrl || null
+      }).returning();
+      console.log("✅ DB Insert Success! ID:", savedRecipe.id);
+    } catch (dbErr) {
+      console.error("❌ DB Insert Failed:", dbErr);
+      // Fallback: If JSON fields failed, try to save simpler version
+       [savedRecipe] = await db.insert(recipesTable).values({
+        title: recipeResult.data.title || title,
+        description: "AI Generated Recipe (Partial Data)",
+        ingredients: [],
+        instructions: [],
+        cookTime: "N/A",
+        servings: "2",
+        userId: userId,
+        image: null
+      }).returning();
+    }
 
     // Increment Limit in Redis
     try {
