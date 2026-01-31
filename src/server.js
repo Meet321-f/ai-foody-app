@@ -337,6 +337,7 @@ app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
     const finalIngredients = ingredient || ingredients || recipeResult.data.ingredients || [];
     const finalInstructions = steps || instructions || recipeResult.data.instructions || [];
     const finalCookTime = cookTime || prepTime || "20 min";
+    const finalServings = String(serveTo || servings || "1-2");
     // Verify AI output
     if (!finalIngredients.length || !finalInstructions.length) {
       console.warn("⚠️ AI returned empty ingredients/instructions:", recipeResult.data);
