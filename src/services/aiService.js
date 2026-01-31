@@ -59,7 +59,26 @@ export const getSuggestions = async (prompt) => {
     if (data.error) throw new Error(`Mistral Error: ${data.error.message}`);
     
     const content = parseLLMJSON(data.choices[0].message.content);
-    return { success: true, suggestions: content.suggestions };
+    let suggestionsArr = [];
+    
+    if (content.suggestions && Array.isArray(content.suggestions)) {
+      suggestionsArr = content.suggestions;
+    } else if (Array.isArray(content)) {
+      suggestionsArr = content;
+    } else if (typeof content === 'object' && content !== null) {
+      // Try to find any array inside the object
+      const possibleArray = Object.values(content).find(val => Array.isArray(val));
+      if (possibleArray) suggestionsArr = possibleArray;
+    }
+
+    // Ensure they are all strings and trimmed
+    suggestionsArr = suggestionsArr
+      .filter(s => s && typeof s === 'string')
+      .map(s => s.trim())
+      .slice(0, 3);
+
+    console.log(`[AI Service] Final Suggestions:`, suggestionsArr);
+    return { success: true, suggestions: suggestionsArr };
   } catch (error) {
     console.error("Suggestions Error:", error);
     throw error;
@@ -80,7 +99,7 @@ export const generateFullRecipeData = async (title, context = "") => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openai/gpt-4o-mini",
+        model: "openai/gpt-5-nano",
         messages: [
           {
             role: "system",
@@ -107,8 +126,20 @@ export const generateFullRecipeData = async (title, context = "") => {
     
     // Ensure critical fields exist to prevent frontend/DB crashes
     recipe.title = recipe.recipeName || recipe.title || title; 
-    recipe.ingredient = recipe.ingredient || recipe.ingredients || [];
-    recipe.steps = recipe.steps || recipe.instructions || [];
+    
+    // Robustly handle ingredients
+    let rawIngredients = recipe.ingredient || recipe.ingredients || [];
+    if (typeof rawIngredients === 'string') {
+      rawIngredients = rawIngredients.split(/[,\n]/).map(i => i.trim()).filter(i => i);
+    }
+    recipe.ingredient = Array.isArray(rawIngredients) ? rawIngredients : [];
+
+    // Robustly handle instructions
+    let rawSteps = recipe.steps || recipe.instructions || [];
+    if (typeof rawSteps === 'string') {
+      rawSteps = rawSteps.split(/\d+\.\s|\n/).map(s => s.trim()).filter(s => s);
+    }
+    recipe.steps = Array.isArray(rawSteps) ? rawSteps : [];
     
     return { success: true, data: recipe };
   } catch (error) {
@@ -157,7 +188,7 @@ export const generateRecipeImage = async (imagePrompt) => {
     if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('http')) {
         // Fallback to extraction if content contains extra text
         const match = (data.choices?.[0]?.message?.content || "").match(/https?:\/\/[^\s"'<>]+/);
-        imageUrl = match ? match[0] : "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop";
+        imageUrl = match ? match[0] : null;
     }
     
     return { 
@@ -168,8 +199,7 @@ export const generateRecipeImage = async (imagePrompt) => {
     console.error("Image Generation Error:", error);
     return { 
       success: false, 
-      imageUrl: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop" 
-    };
+      imageUrl: null    };
   }
 };
 

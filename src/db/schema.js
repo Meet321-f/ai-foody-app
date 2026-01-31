@@ -58,3 +58,34 @@ export const coustomeRecipesTable = pgTable("coustome_recipes", {
   steps: text("steps"),
   createdAt: timestamp("created_at").defaultNow(),
 });
+export const vegRecipesTable = pgTable("veg_recipes", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  ingredients: json("ingredients"),
+  instructions: json("instructions"),
+  image: text("image"),
+  cookTime: text("cook_time"),
+  servings: text("servings"),
+  userId: text("user_id"),
+  userName: text("user_name"),
+  userImage: text("user_image"),
+  isPublic: text("is_public").default("false"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const nonVegRecipesTable = pgTable("non_veg_recipes", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  ingredients: json("ingredients"),
+  instructions: json("instructions"),
+  image: text("image"),
+  cookTime: text("cook_time"),
+  servings: text("servings"),
+  userId: text("user_id"),
+  userName: text("user_name"),
+  userImage: text("user_image"),
+  isPublic: text("is_public").default("false"),
+  createdAt: timestamp("created_at").defaultNow(),
+});

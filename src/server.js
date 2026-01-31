@@ -2,8 +2,8 @@ import express from "express";
 import cors from "cors";
 import { ENV } from "./config/env.js";
 import { db } from "./config/db.js";
-import { favoritesTable, recipesTable, commentsTable, profilesTable, coustomeRecipesTable } from "./db/schema.js";
-import { and, eq, desc, gt, sql, asc, gte, lte, inArray } from "drizzle-orm";
+import { favoritesTable, recipesTable, commentsTable, profilesTable, coustomeRecipesTable, vegRecipesTable, nonVegRecipesTable } from "./db/schema.js";
+import { and, eq, desc, gt, sql, asc, gte, lte, inArray, ilike } from "drizzle-orm";
 import job from "./config/cron.js";
 import { generateRecipe, getSuggestions, generateFullRecipeData, generateRecipeImage } from "./services/aiService.js";
 import { clerkAuth } from "./services/authService.js";
@@ -278,8 +278,9 @@ app.post("/api/ai/suggestions", clerkAuth, async (req, res) => {
 app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
   try {
     const { title, context } = req.body;
+    const skipImage = true; // Always skip image generation for now as requested
     const userId = req.auth.userId;
-    console.log(`[AI Full Recipe] User ${userId} requested for: ${title}`);
+    console.log(`[AI Full Recipe] User ${userId} requested for: ${title} (Forced SkipImage)`);
 
     if (!title) return res.status(400).json({ error: "Title is required" });
 
@@ -292,10 +293,10 @@ app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
       console.warn("Redis rate limit check failed, proceeding without limit check:", e.message);
     }
 
-    if (dailyCount && parseInt(dailyCount) >= 3) {
+    if (dailyCount && parseInt(dailyCount) >= 10) { // Increased to 10 for testing
       return res.status(403).json({
         success: false,
-        error: "Daily limit reached! 👨‍🍳 You can only generate 3 recipes every 24 hours. Please try again later."
+        error: "Daily limit reached! 👨‍🍳 You can only generate 10 recipes every 24 hours. Please try again later."
       });
     }
 
@@ -323,8 +324,14 @@ app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
     // Use the generated imagePrompt, or fallback to title if mapped incorrectly
     const promptForImage = imagePrompt || `${recipeResult.data.title || title} food photography`;
     
-    // 3. Generate Image
-    const imageResult = await generateRecipeImage(promptForImage);
+    // 3. Generate Image (Only if not skipped)
+    let imageResult = { success: false, imageUrl: null };
+    if (!skipImage) {
+      console.log(`[AI Full Recipe] Generating image for: ${promptForImage}`);
+      imageResult = await generateRecipeImage(promptForImage);
+    } else {
+      console.log(`[AI Full Recipe] Skipping image generation as requested.`);
+    }
 
     // Normalize data for DB and Frontend
     const finalIngredients = ingredient || ingredients || recipeResult.data.ingredients || [];
@@ -341,7 +348,7 @@ app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
       cookTime: finalCookTime,
       servings: finalServings,
       userId: userId,
-      image: imageResult.imageUrl || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop"
+      image: imageResult.imageUrl || null
     }).returning();
 
     // Increment Limit in Redis
@@ -397,7 +404,7 @@ app.post("/api/ai/generate-recipe", clerkAuth, async (req, res) => {
         cookTime: result.data.prepTime || "20 min",
         servings: "1-2",
         userId: userId, // Track who generated this recipe
-        image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop"
+        image: null,
       }).returning();
 
       res.status(200).json({
@@ -422,78 +429,20 @@ app.post("/api/ai/generate-recipe", clerkAuth, async (req, res) => {
 // Custom/Indian Recipes from Firebase Firestore (Cached & Fair Randomized Fetching)
 app.get("/api/indian-recipes", async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 10;
-    const userId = req.query.userId || "guest";
-    const queueKey = `indian:queue:${userId}`;
-
-    // 1. Try to pop IDs from Redis Queue
-    let recipeIds = [];
-    try {
-      recipeIds = await redisClient.lPop(queueKey, limit);
-      if (recipeIds && !Array.isArray(recipeIds)) {
-        recipeIds = [recipeIds];
-      }
-    } catch (e) {
-      console.warn("Redis lPop failed", e.message);
-    }
-
-    // 2. If queue is empty or low, refill with the 140 known IDs
-    if (!recipeIds || recipeIds.length < limit) {
-      console.log(`[Indian Recipes] Firestore Queue deficit for ${userId} (${recipeIds?.length || 0}/${limit}), refilling...`);
-      
-      const allIds = Array.from({ length: 140 }, (_, i) => String(i + 1));
-      // Fisher-Yates Shuffle
-      for (let i = allIds.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [allIds[i], allIds[j]] = [allIds[j], allIds[i]];
-      }
-
-      try {
-        const currentLen = await redisClient.lLen(queueKey);
-        if (currentLen === 0) {
-          await redisClient.rPush(queueKey, allIds);
-          await redisClient.expire(queueKey, 86400 * 7); // 7 days
-        }
-        
-        const needed = limit - (recipeIds ? recipeIds.length : 0);
-        const extra = await redisClient.lPop(queueKey, needed);
-        
-        if (extra) {
-          const extraArr = Array.isArray(extra) ? extra : [extra];
-          recipeIds = [...(recipeIds || []), ...extraArr];
-        }
-      } catch (e) {
-        console.warn("Redis refill failed", e.message);
-        if (!recipeIds || recipeIds.length === 0) {
-          recipeIds = allIds.slice(0, limit);
-        }
-      }
-    }
-
-    // 3. Final safety check
-    if (!recipeIds || recipeIds.length === 0) {
-        recipeIds = Array.from({ length: limit }, () => String(Math.floor(Math.random() * 140) + 1));
-    }
-
-    // 4. Fetch from Firebase Firestore using retrieved IDs
-    console.log(`[Indian Recipes] Fetching ${recipeIds.length} recipes from Firestore for user ${userId}`);
-    const recipesCollection = collection(firestore, "indian_recipes");
+    const limit = parseInt(req.query.limit) || 12;
+    const offset = parseInt(req.query.offset) || 0;
     
-    const recipePromises = recipeIds.map(async (id) => {
-      const docRef = doc(recipesCollection, id);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        return { id: parseInt(id), ...docSnap.data() };
-      }
-      return null;
-    });
+    console.log(`[Indian Recipes] Fetching from NeonDB (Limit: ${limit}, Offset: ${offset})`);
 
-    const recipes = await Promise.all(recipePromises);
-    const filteredRecipes = recipes.filter(Boolean);
+    const recipes = await db
+      .select()
+      .from(coustomeRecipesTable)
+      .limit(limit)
+      .offset(offset);
 
-    res.status(200).json(filteredRecipes);
+    res.status(200).json({ recipes });
   } catch (error) {
-    console.log("Error fetching indian recipes from Firestore", error);
+    console.log("Error fetching indian recipes from NeonDB", error);
     res.status(500).json({ error: "Something went wrong" });
   }
 });
@@ -506,25 +455,18 @@ app.get("/api/indian-recipes/search", async (req, res) => {
       return res.status(400).json({ error: "Query parameter 'q' is required" });
     }
 
-    console.log(`[Indian Recipes Search] Searching for: ${q}`);
-    const recipesCollection = collection(firestore, "indian_recipes");
-    const querySnapshot = await getDocs(recipesCollection);
+    console.log(`[Indian Recipes Search] Searching NeonDB for: ${q}`);
     
-    const searchLower = q.toLowerCase();
-    const results = [];
-    
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      const title = (data.title || data.name || "").toLowerCase();
-      if (title.includes(searchLower)) {
-        results.push({ id: parseInt(doc.id), ...data });
-      }
-    });
+    const results = await db
+      .select()
+      .from(coustomeRecipesTable)
+      .where(ilike(coustomeRecipesTable.name, `%${q}%`))
+      .limit(20);
 
     console.log(`[Indian Recipes Search] Found ${results.length} results for: ${q}`);
-    res.status(200).json(results.slice(0, 20)); // Limit to top 20 results
+    res.status(200).json({ recipes: results }); 
   } catch (error) {
-    console.log("Error searching indian recipes from Firestore", error);
+    console.log("Error searching indian recipes from NeonDB", error);
     res.status(500).json({ error: "Something went wrong" });
   }
 });
@@ -545,6 +487,31 @@ app.get("/api/indian-recipes/:id", async (req, res) => {
     res.status(200).json(recipe[0]);
   } catch (error) {
     console.log("Error fetching indian recipe by id", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
+app.get("/api/recipes/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const recipeId = parseInt(id);
+    
+    // Check all three potential custom recipe tables
+    const [legacy, veg, nonveg] = await Promise.all([
+      db.select().from(recipesTable).where(eq(recipesTable.id, recipeId)).limit(1),
+      db.select().from(vegRecipesTable).where(eq(vegRecipesTable.id, recipeId)).limit(1),
+      db.select().from(nonVegRecipesTable).where(eq(nonVegRecipesTable.id, recipeId)).limit(1)
+    ]);
+
+    const recipe = legacy[0] || veg[0] || nonveg[0];
+
+    if (!recipe) {
+      return res.status(404).json({ error: "Recipe not found" });
+    }
+
+    res.status(200).json(recipe);
+  } catch (error) {
+    console.log("Error fetching recipe by id", error);
     res.status(500).json({ error: "Something went wrong" });
   }
 });
@@ -584,17 +551,20 @@ app.post("/api/recipes", clerkAuth, async (req, res) => {
       servings, 
       userName, 
       userImage, 
-      isPublic 
+      isPublic,
+      dietType // "veg" or "non-veg"
     } = req.body;
 
-    console.log(`[Create Recipe] User: ${userId}, Title: ${title}`);
+    console.log(`[Create Recipe] User: ${userId}, Title: ${title}, Diet: ${dietType}`);
 
     if (!title) {
       return res.status(400).json({ error: "Title is required" });
     }
 
+    const targetTable = dietType === "veg" ? vegRecipesTable : (dietType === "non-veg" ? nonVegRecipesTable : recipesTable);
+
     const [newRecipe] = await db
-      .insert(recipesTable)
+      .insert(targetTable)
       .values({
         title,
         description,
@@ -638,20 +608,24 @@ app.get("/api/community/recipes", async (req, res) => {
         console.warn("Redis community cache get failed", e.message);
     }
 
-    const recipes = await db
-      .select()
-      .from(recipesTable)
-      .where(eq(recipesTable.isPublic, "true"))
-      .orderBy(desc(recipesTable.createdAt));
+    // Fetch from all 3 tables for community
+    const [legacyRecipes, vegRecipes, nonVegRecipes] = await Promise.all([
+      db.select().from(recipesTable).where(eq(recipesTable.isPublic, "true")),
+      db.select().from(vegRecipesTable).where(eq(vegRecipesTable.isPublic, "true")),
+      db.select().from(nonVegRecipesTable).where(eq(nonVegRecipesTable.isPublic, "true"))
+    ]);
+
+    const allRecipes = [...legacyRecipes, ...vegRecipes, ...nonVegRecipes]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     // Set Cache (10 Minutes)
     try {
-        await redisClient.set(cacheKey, JSON.stringify(recipes), "EX", 600);
+        await redisClient.set(cacheKey, JSON.stringify(allRecipes), "EX", 600);
     } catch (e) {
         console.warn("Redis community cache set failed", e.message);
     }
 
-    res.status(200).json({ success: true, data: recipes });
+    res.status(200).json({ success: true, data: allRecipes });
   } catch (error) {
     console.log("Error fetching community recipes", error);
     res.status(500).json({ error: "Something went wrong" });
@@ -663,13 +637,16 @@ app.get("/api/recipes/user/:userId", clerkAuth, async (req, res) => {
     const userId = req.auth.userId;
     console.log(`[User Recipes] Fetching for: ${userId}`);
 
-    const recipes = await db
-      .select()
-      .from(recipesTable)
-      .where(eq(recipesTable.userId, userId))
-      .orderBy(desc(recipesTable.createdAt));
+    const [legacyRecipes, vegRecipes, nonVegRecipes] = await Promise.all([
+      db.select().from(recipesTable).where(eq(recipesTable.userId, userId)),
+      db.select().from(vegRecipesTable).where(eq(vegRecipesTable.userId, userId)),
+      db.select().from(nonVegRecipesTable).where(eq(nonVegRecipesTable.userId, userId))
+    ]);
 
-    res.status(200).json({ success: true, data: recipes });
+    const allRecipes = [...legacyRecipes, ...vegRecipes, ...nonVegRecipes]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.status(200).json({ success: true, data: allRecipes });
   } catch (error) {
     console.log("Error fetching user recipes", error);
     res.status(500).json({ error: "Something went wrong" });
