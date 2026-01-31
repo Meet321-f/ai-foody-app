@@ -7,26 +7,33 @@ export const MealAPI = {
   fetchWithRetry: async (
     url: string,
     options: RequestInit = {},
-    retries = 3,
-    backoff = 1000,
+    retries = 2, // Reduced retries for faster fallback
+    backoff = 500, // Faster backoff
+    timeout = 10000, // Default 10s timeout
   ) => {
     for (let i = 0; i < retries; i++) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
       try {
-        const response = await fetch(url, options);
+        console.log(`[Fetch] Attempt ${i + 1} to: ${url}`);
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
-          // If 404, maybe it's not ready yet, or truly missing. We retry 500s mostly.
-          // But user said "not found" appears when it shouldn't, so we might want to retry 404s briefly.
-          if (response.status === 404) {
-            throw new Error(`HTTP 404: Not Found`);
-          }
           throw new Error(`HTTP ${response.status}`);
         }
         return response;
       } catch (err) {
-        if (i === retries - 1) throw err;
-        console.warn(
-          `Attempt ${i + 1} failed for ${url}. Retrying in ${backoff}ms...`,
-        );
+        clearTimeout(timeoutId);
+        if (i === retries - 1) {
+          console.error(`[Fetch] Final failure for ${url}:`, err);
+          throw err;
+        }
+        console.warn(`[Fetch] Attempt ${i + 1} failed for ${url}. Retrying...`);
         await new Promise((r) => setTimeout(r, backoff));
       }
     }
@@ -128,22 +135,34 @@ export const MealAPI = {
   // GET Indian Recipes from our NeonDB Backend
   getIndianRecipes: async (limit: number = 10, userId: string = "guest") => {
     try {
-      const { API_URL } = await import("../constants/api");
-      const url = `${API_URL}/indian-recipes?limit=${limit}&userId=${userId}`;
+      const { API_URL, BACKEND_IP } = await import("../constants/api");
+      let url = `${API_URL}/indian-recipes?limit=${limit}&userId=${userId}`;
       console.log(`🔍 Fetching Indian recipes from: ${url}`);
 
-      const response = await MealAPI.fetchWithRetry(url, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      const data = await response.json();
-      console.log(`✅ Fetched ${data.length} Indian recipes from NeonDB`);
-      return data || [];
+      try {
+        const response = await MealAPI.fetchWithRetry(url, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+        const data = await response.json();
+        const recipesArr = data.recipes || data || [];
+        console.log(`✅ Fetched ${recipesArr.length} Indian recipes`);
+        return recipesArr;
+      } catch (e) {
+        // If primary fails, try the hardcoded fallback IP
+        console.warn("⚠️ Primary fetch failed, trying fallback IP...");
+        const fallbackUrl = `http://${BACKEND_IP}:5001/api/indian-recipes?limit=${limit}&userId=${userId}`;
+        const response = await fetch(fallbackUrl);
+        const data = await response.json();
+        const recipesArr = data.recipes || data || [];
+        console.log(
+          `✅ Fetched ${recipesArr.length} Indian recipes via fallback`,
+        );
+        return recipesArr;
+      }
     } catch (error) {
       const err = error as Error;
       console.error("❌ Error getting indian recipes:", err);
-      console.error("Error details:", err.message || error);
       return [];
     }
   },
@@ -151,33 +170,60 @@ export const MealAPI = {
   // Search Indian Recipes from our Backend
   searchIndianRecipes: async (query: string) => {
     try {
-      const { API_URL } = await import("../constants/api");
-      const url = `${API_URL}/indian-recipes/search?q=${encodeURIComponent(query)}`;
+      const { API_URL, BACKEND_IP } = await import("../constants/api");
+      let url = `${API_URL}/indian-recipes/search?q=${encodeURIComponent(query)}`;
       console.log(`🔍 Searching Indian recipes: ${url}`);
 
-      const response = await MealAPI.fetchWithRetry(url, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      const data = await response.json();
-      console.log(`✅ Found ${data.length} Indian recipes matching "${query}"`);
-      return data || [];
+      try {
+        const response = await MealAPI.fetchWithRetry(url, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+        const data = await response.json();
+        const recipesArr = data.recipes || data || [];
+        console.log(
+          `✅ Found ${recipesArr.length} Indian recipes matching "${query}"`,
+        );
+        return recipesArr;
+      } catch (e) {
+        console.warn("⚠️ Primary search failed, trying fallback IP...");
+        const fallbackUrl = `http://${BACKEND_IP}:5001/api/indian-recipes/search?q=${encodeURIComponent(query)}`;
+        const response = await fetch(fallbackUrl);
+        const data = await response.json();
+        const recipesArr = data.recipes || data || [];
+        console.log(
+          `✅ Found ${recipesArr.length} Indian recipes matching "${query}" via fallback`,
+        );
+        return recipesArr;
+      }
     } catch (error) {
       console.error("❌ Error searching indian recipes:", error);
       return [];
     }
   },
 
-  // GET Indian Recipe by ID from NeonDB
+  // GET AI Recipe by ID from NeonDB
   getAiRecipeById: async (id: string) => {
     try {
-      const { API_URL } = await import("../constants/api");
-      const response = await MealAPI.fetchWithRetry(`${API_URL}/recipes/${id}`);
-      const data = await response.json();
-      return data || null;
+      const { API_URL, BACKEND_IP } = await import("../constants/api");
+      let url = `${API_URL}/recipes/${id}`;
+      console.log(`🔍 Fetching AI recipe detail: ${url}`);
+
+      try {
+        const response = await MealAPI.fetchWithRetry(url);
+        const data = await response.json();
+        return data || null;
+      } catch (e) {
+        console.warn(
+          "⚠️ Primary AI detail fetch failed, trying fallback IP...",
+        );
+        const fallbackUrl = `http://${BACKEND_IP}:5001/api/recipes/${id}`;
+        const response = await fetch(fallbackUrl);
+        const data = await response.json();
+        return data || null;
+      }
     } catch (error) {
-      console.error("Error getting ai recipe by id:", error);
+      console.error("❌ Error getting ai recipe by id:", error);
       return null;
     }
   },
@@ -185,13 +231,142 @@ export const MealAPI = {
   // GET Indian Recipe by ID from NeonDB
   getIndianRecipeById: async (id: string) => {
     try {
-      const { API_URL } = await import("../constants/api");
-      const response = await fetch(`${API_URL}/indian-recipes/${id}`);
-      const data = await response.json();
-      return data || null;
+      const { API_URL, BACKEND_IP } = await import("../constants/api");
+      let url = `${API_URL}/indian-recipes/${id}`;
+      console.log(`🔍 Fetching Indian recipe detail: ${url}`);
+
+      try {
+        const response = await MealAPI.fetchWithRetry(url, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+        const data = await response.json();
+        console.log(`✅ Fetched recipe detail for ID: ${id}`);
+        return data || null;
+      } catch (e) {
+        console.warn("⚠️ Primary detail fetch failed, trying fallback IP...");
+        const fallbackUrl = `http://${BACKEND_IP}:5001/api/indian-recipes/${id}`;
+        const response = await fetch(fallbackUrl);
+        const data = await response.json();
+        console.log(`✅ Fetched recipe detail for ID: ${id} via fallback`);
+        return data || null;
+      }
     } catch (error) {
-      console.error("Error getting indian recipe by id:", error);
+      console.error("❌ Error getting indian recipe by id:", error);
       return null;
+    }
+  },
+
+  // Get AI Recipe Suggestions
+  getAiSuggestions: async (prompt: string, token: string) => {
+    try {
+      const { API_URL, BACKEND_IP } = await import("../constants/api");
+      let url = `${API_URL}/ai/suggestions`;
+      console.log(`🔍 Requesting AI suggestions: ${url}`);
+
+      const body = JSON.stringify({ prompt });
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      try {
+        return await (
+          await MealAPI.fetchWithRetry(
+            url,
+            {
+              method: "POST",
+              headers,
+              body,
+            },
+            2,
+            1000,
+            60000,
+          )
+        ) // 60s timeout
+          .json();
+      } catch (e) {
+        console.warn(
+          `[AI Suggestions] Primary failed for ${url}, trying fallback...`,
+        );
+        const fallbackUrl = `http://${BACKEND_IP}:5001/api/ai/suggestions`;
+        return await (
+          await MealAPI.fetchWithRetry(
+            fallbackUrl,
+            {
+              method: "POST",
+              headers,
+              body,
+            },
+            2,
+            1000,
+            60000,
+          )
+        ) // 60s timeout
+          .json();
+      }
+    } catch (error) {
+      console.error("❌ Error getting AI suggestions:", error);
+      throw error;
+    }
+  },
+
+  // Generate Full AI Recipe
+  generateFullAiRecipe: async (
+    title: string,
+    skipImage: boolean,
+    token: string,
+    context: string = "",
+  ) => {
+    try {
+      const { API_URL, BACKEND_IP } = await import("../constants/api");
+      let url = `${API_URL}/ai/generate-full-recipe`;
+      console.log(`🔍 Generating full AI recipe: ${url}`);
+
+      const body = JSON.stringify({ title, skipImage, context });
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      try {
+        return await (
+          await MealAPI.fetchWithRetry(
+            url,
+            {
+              method: "POST",
+              headers,
+              body,
+            },
+            2,
+            1000,
+            60000,
+          )
+        ) // 60s timeout
+          .json();
+      } catch (e) {
+        console.warn(
+          `[AI Generation] Primary failed for ${url}, trying fallback...`,
+        );
+        const fallbackUrl = `http://${BACKEND_IP}:5001/api/ai/generate-full-recipe`;
+        return await (
+          await MealAPI.fetchWithRetry(
+            fallbackUrl,
+            {
+              method: "POST",
+              headers,
+              body,
+            },
+            2,
+            1000,
+            60000,
+          )
+        ) // 60s timeout
+          .json();
+      }
+    } catch (error) {
+      console.error("❌ Error generating full AI recipe:", error);
+      throw error;
     }
   },
 
@@ -241,6 +416,8 @@ export const MealAPI = {
   // transform Custom Recipe Data
   transformCustomRecipe: (recipe: any): Recipe | null => {
     if (!recipe) return null;
+
+    const DEFAULT_UNSPLASH = "photo-1546069901-ba9599a7e63c";
 
     // Handle instructions/steps (support both fields)
     let rawSteps = recipe.steps || recipe.instructions;
@@ -292,7 +469,22 @@ export const MealAPI = {
         : `custom_${recipe.id}`,
       title: recipe.title || recipe.name, // Support both title and name
       description: recipe.description || `State: ${recipe.state || "India"}.`,
-      image: recipe.image,
+      image: (() => {
+        const img =
+          recipe.image ||
+          recipe.imageUrl ||
+          recipe.photo ||
+          recipe.thumbnail ||
+          recipe.img ||
+          recipe.img_url ||
+          null;
+
+        // If it's the known default salad image, treat it as null to show our gradient placeholder
+        if (typeof img === "string" && img.includes(DEFAULT_UNSPLASH)) {
+          return null;
+        }
+        return img;
+      })(),
       cookTime: recipe.cookTime || recipe.prepTime || "30 min",
       servings: recipe.servings || 4,
       category: "Indian",

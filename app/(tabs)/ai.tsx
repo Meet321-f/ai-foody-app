@@ -29,6 +29,7 @@ import { useAuth, useUser } from "@clerk/clerk-expo";
 import { COLORS } from "../../constants/colors";
 import { API_URL } from "../../constants/api";
 import { UserStorageService } from "../../services/userStorage";
+import { MealAPI } from "../../services/mealAPI";
 import { Recipe } from "../../types";
 
 const { width } = Dimensions.get("window");
@@ -177,7 +178,11 @@ const AiScreen = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<Recipe[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [isPro, setIsPro] = useState(false); // Mock Pro Status
+  const [originalPrompt, setOriginalPrompt] = useState("");
+  const [isPro, setIsPro] = useState(true); // Enabled for testing full experience
+  const [backendStatus, setBackendStatus] = useState<
+    "online" | "offline" | "checking"
+  >("checking");
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "init",
@@ -195,6 +200,28 @@ const AiScreen = () => {
   useEffect(() => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   }, [messages, isTyping]);
+
+  useEffect(() => {
+    checkBackend();
+    const interval = setInterval(checkBackend, 10000); // Check every 10s
+    return () => clearInterval(interval);
+  }, []);
+
+  const checkBackend = async () => {
+    try {
+      const { API_URL } = await import("../../constants/api");
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), 3000); // 3s fast check
+
+      const response = await fetch(`${API_URL}/health`, {
+        signal: controller.signal,
+      });
+      clearTimeout(id);
+      setBackendStatus(response.ok ? "online" : "offline");
+    } catch (e) {
+      setBackendStatus("offline");
+    }
+  };
 
   useEffect(() => {
     if (showHistory) {
@@ -241,27 +268,15 @@ const AiScreen = () => {
     };
 
     setMessages((prev) => [...prev, userMsg]);
+    setOriginalPrompt(userMsg.text); // Store the actual craving
     setInputText("");
     setIsTyping(true);
 
     try {
-      const token = await getToken();
-      const response = await fetch(`${API_URL}/ai/suggestions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ prompt: userMsg.text }),
-      });
-
-      const result = await response.json();
-
-      if (response.status === 403) {
-        throw new Error(
-          result.error || "Daily limit reached! Please try again later.",
-        );
-      }
+      const token = (await getToken()) || "";
+      console.log(`[AiScreen] Requesting suggestions for: ${userMsg.text}`);
+      const result = await MealAPI.getAiSuggestions(userMsg.text, token);
+      console.log(`[AiScreen] Suggestions Result:`, result);
 
       if (!result.success || !result.suggestions) {
         throw new Error(result.error || "Failed to get suggestions");
@@ -286,9 +301,11 @@ const AiScreen = () => {
         {
           id: `err-${Date.now()}`,
           text:
-            error instanceof Error
-              ? error.message
-              : "I hit a snag while brainstorming. Please try again! 🥘",
+            error instanceof Error && error.message.includes("Network")
+              ? "Connection Error: Check if your phone and PC are on the same WiFi and if the IP 192.168.31.215 is correct."
+              : error instanceof Error
+                ? error.message
+                : "I hit a snag while brainstorming. Please try again! 🥘",
           sender: "bot",
           timestamp: new Date().toLocaleTimeString([], {
             hour: "2-digit",
@@ -318,26 +335,16 @@ const AiScreen = () => {
     setIsTyping(true);
 
     try {
-      const token = await getToken();
-      const response = await fetch(`${API_URL}/ai/generate-full-recipe`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title: suggestion,
-          skipImage: !isPro, // Correctly pass the flag
-        }),
-      });
+      const token = (await getToken()) || "";
+      console.log(`[AiScreen] Generating full recipe for: ${suggestion}`);
+      const result = await MealAPI.generateFullAiRecipe(
+        suggestion,
+        !isPro,
+        token,
+        originalPrompt, // Pass the original ingredients context
+      );
 
-      const result = await response.json();
-
-      if (response.status === 403) {
-        throw new Error(
-          result.error || "Daily limit reached! Please try again later.",
-        );
-      }
+      console.log("[AiScreen] Generation Result:", result);
 
       if (!result.success || !result.data) {
         throw new Error(result.error || "Failed to generate recipe");
@@ -419,7 +426,19 @@ const AiScreen = () => {
                 source={require("../../assets/images/Ai.png")}
                 style={styles.headerAvatar}
               />
-              <View style={styles.statusDot} />
+              <View
+                style={[
+                  styles.statusDot,
+                  {
+                    backgroundColor:
+                      backendStatus === "online"
+                        ? "#4ade80"
+                        : backendStatus === "offline"
+                          ? "#ef4444"
+                          : "#eab308",
+                  },
+                ]}
+              />
             </View>
             <View style={{ marginLeft: 12 }}>
               <Text style={styles.headerTitle}>Chef Foody AI</Text>
@@ -667,7 +686,7 @@ const styles = StyleSheet.create({
   inputWrapper: {
     paddingHorizontal: 20,
     paddingBottom: Platform.OS === "ios" ? 20 : 10,
-    marginBottom: 90,
+    marginBottom: 40, // Lowered from 90 -> 60 -> 40 to be closer to the bottom
     backgroundColor: "transparent",
   },
   inputBar: {

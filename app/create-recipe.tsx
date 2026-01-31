@@ -34,13 +34,14 @@ const CreateRecipeScreen = () => {
   const [ingredients, setIngredients] = useState<string[]>([""]);
   const [instructions, setInstructions] = useState<string[]>([""]);
   const [isPublic, setIsPublic] = useState(true);
+  const [dietType, setDietType] = useState<"veg" | "non-veg">("veg");
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert(
         "Permission Required",
-        "We need access to your photos to upload a recipe image."
+        "We need access to your photos to upload a recipe image.",
       );
       return;
     }
@@ -102,15 +103,14 @@ const CreateRecipeScreen = () => {
           description,
           ingredients: ingredients.filter((i) => i.trim()),
           instructions: instructions.filter((s) => s.trim()),
-          image:
-            image ||
-            "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop",
+          image: image || null,
           cookTime: cookTime || "20 min",
           servings: servings || "2",
           userId: user.id,
           userName: profile?.name || user.fullName || "Chef",
           userImage: profile?.image || user.imageUrl,
           isPublic,
+          dietType,
         }),
       });
 
@@ -126,7 +126,7 @@ const CreateRecipeScreen = () => {
       console.error("Error sharing recipe:", error);
       Alert.alert(
         "Error",
-        error.message || "Failed to share recipe. Please try again."
+        error.message || "Failed to share recipe. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -196,6 +196,53 @@ const CreateRecipeScreen = () => {
               value={description}
               onChangeText={setDescription}
             />
+
+            <Text style={styles.label}>Diet Type</Text>
+            <View style={styles.dietSelector}>
+              <TouchableOpacity
+                style={[
+                  styles.dietOption,
+                  dietType === "veg" && styles.dietOptionSelected,
+                ]}
+                onPress={() => setDietType("veg")}
+              >
+                <Ionicons
+                  name="leaf"
+                  size={20}
+                  color={dietType === "veg" ? "#000" : "#4CAF50"}
+                />
+                <Text
+                  style={[
+                    styles.dietText,
+                    dietType === "veg" && styles.dietTextSelected,
+                  ]}
+                >
+                  Veg
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.dietOption,
+                  dietType === "non-veg" && styles.dietOptionSelectedNonVeg,
+                ]}
+                onPress={() => setDietType("non-veg")}
+              >
+                <Ionicons
+                  name="restaurant"
+                  size={20}
+                  color={dietType === "non-veg" ? "#FFF" : "#FF5252"}
+                />
+                <Text
+                  style={[
+                    styles.dietText,
+                    dietType === "non-veg" && styles.dietTextSelectedNonVeg,
+                  ]}
+                >
+                  Non-Veg
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.row}>
               <View style={{ flex: 1, marginRight: 8 }}>
@@ -444,6 +491,42 @@ const styles = StyleSheet.create({
     color: "#000",
     fontSize: 18,
     fontWeight: "bold",
+  },
+  dietSelector: {
+    flexDirection: "row",
+    gap: 15,
+    marginTop: 5,
+  },
+  dietOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    gap: 8,
+  },
+  dietOptionSelected: {
+    backgroundColor: "#4CAF50",
+    borderColor: "#4CAF50",
+  },
+  dietOptionSelectedNonVeg: {
+    backgroundColor: "#FF5252",
+    borderColor: "#FF5252",
+  },
+  dietText: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  dietTextSelected: {
+    color: "#000",
+  },
+  dietTextSelectedNonVeg: {
+    color: "#FFF",
   },
 });
 

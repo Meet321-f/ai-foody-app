@@ -156,11 +156,31 @@ function RecipeCard({ recipe }: RecipeCardProps) {
       activeOpacity={0.9}
     >
       <Image
-        source={{ uri: recipe.image }}
+        source={recipe.image ? { uri: recipe.image } : null}
         style={styles.image}
         contentFit="cover"
         transition={500}
+        placeholderContentFit="cover"
+        onError={() =>
+          console.warn(`Failed to load image for: ${recipe.title}`)
+        }
       />
+      {!recipe.image && (
+        <LinearGradient
+          colors={[COLORS.primary + "40", COLORS.primary + "10"]}
+          style={styles.image}
+        >
+          <View
+            style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+          >
+            <Ionicons
+              name="restaurant-outline"
+              size={40}
+              color={COLORS.primary + "80"}
+            />
+          </View>
+        </LinearGradient>
+      )}
       <View style={styles.overlay} />
       <LinearGradient
         colors={["transparent", "rgba(0,0,0,0.8)", "#000000"]}
