@@ -135,31 +135,18 @@ export const MealAPI = {
   // GET Indian Recipes from our NeonDB Backend
   getIndianRecipes: async (limit: number = 10, userId: string = "guest") => {
     try {
-      const { API_URL, BACKEND_IP } = await import("../constants/api");
+      const { API_URL } = await import("../constants/api");
       let url = `${API_URL}/indian-recipes?limit=${limit}&userId=${userId}`;
       console.log(`🔍 Fetching Indian recipes from: ${url}`);
 
-      try {
-        const response = await MealAPI.fetchWithRetry(url, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        });
-        const data = await response.json();
-        const recipesArr = data.recipes || data || [];
-        console.log(`✅ Fetched ${recipesArr.length} Indian recipes`);
-        return recipesArr;
-      } catch (e) {
-        // If primary fails, try the hardcoded fallback IP
-        console.warn("⚠️ Primary fetch failed, trying fallback IP...");
-        const fallbackUrl = `http://${BACKEND_IP}:5001/api/indian-recipes?limit=${limit}&userId=${userId}`;
-        const response = await fetch(fallbackUrl);
-        const data = await response.json();
-        const recipesArr = data.recipes || data || [];
-        console.log(
-          `✅ Fetched ${recipesArr.length} Indian recipes via fallback`,
-        );
-        return recipesArr;
-      }
+      const response = await MealAPI.fetchWithRetry(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await response.json();
+      const recipesArr = data.recipes || data || [];
+      console.log(`✅ Fetched ${recipesArr.length} Indian recipes`);
+      return recipesArr;
     } catch (error) {
       const err = error as Error;
       console.error("❌ Error getting indian recipes:", err);
@@ -170,32 +157,20 @@ export const MealAPI = {
   // Search Indian Recipes from our Backend
   searchIndianRecipes: async (query: string) => {
     try {
-      const { API_URL, BACKEND_IP } = await import("../constants/api");
+      const { API_URL } = await import("../constants/api");
       let url = `${API_URL}/indian-recipes/search?q=${encodeURIComponent(query)}`;
       console.log(`🔍 Searching Indian recipes: ${url}`);
 
-      try {
-        const response = await MealAPI.fetchWithRetry(url, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        });
-        const data = await response.json();
-        const recipesArr = data.recipes || data || [];
-        console.log(
-          `✅ Found ${recipesArr.length} Indian recipes matching "${query}"`,
-        );
-        return recipesArr;
-      } catch (e) {
-        console.warn("⚠️ Primary search failed, trying fallback IP...");
-        const fallbackUrl = `http://${BACKEND_IP}:5001/api/indian-recipes/search?q=${encodeURIComponent(query)}`;
-        const response = await fetch(fallbackUrl);
-        const data = await response.json();
-        const recipesArr = data.recipes || data || [];
-        console.log(
-          `✅ Found ${recipesArr.length} Indian recipes matching "${query}" via fallback`,
-        );
-        return recipesArr;
-      }
+      const response = await MealAPI.fetchWithRetry(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await response.json();
+      const recipesArr = data.recipes || data || [];
+      console.log(
+        `✅ Found ${recipesArr.length} Indian recipes matching "${query}"`,
+      );
+      return recipesArr;
     } catch (error) {
       console.error("❌ Error searching indian recipes:", error);
       return [];
@@ -205,23 +180,13 @@ export const MealAPI = {
   // GET AI Recipe by ID from NeonDB
   getAiRecipeById: async (id: string) => {
     try {
-      const { API_URL, BACKEND_IP } = await import("../constants/api");
+      const { API_URL } = await import("../constants/api");
       let url = `${API_URL}/recipes/${id}`;
       console.log(`🔍 Fetching AI recipe detail: ${url}`);
 
-      try {
-        const response = await MealAPI.fetchWithRetry(url);
-        const data = await response.json();
-        return data || null;
-      } catch (e) {
-        console.warn(
-          "⚠️ Primary AI detail fetch failed, trying fallback IP...",
-        );
-        const fallbackUrl = `http://${BACKEND_IP}:5001/api/recipes/${id}`;
-        const response = await fetch(fallbackUrl);
-        const data = await response.json();
-        return data || null;
-      }
+      const response = await MealAPI.fetchWithRetry(url);
+      const data = await response.json();
+      return data || null;
     } catch (error) {
       console.error("❌ Error getting ai recipe by id:", error);
       return null;
@@ -231,26 +196,17 @@ export const MealAPI = {
   // GET Indian Recipe by ID from NeonDB
   getIndianRecipeById: async (id: string) => {
     try {
-      const { API_URL, BACKEND_IP } = await import("../constants/api");
+      const { API_URL } = await import("../constants/api");
       let url = `${API_URL}/indian-recipes/${id}`;
       console.log(`🔍 Fetching Indian recipe detail: ${url}`);
 
-      try {
-        const response = await MealAPI.fetchWithRetry(url, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        });
-        const data = await response.json();
-        console.log(`✅ Fetched recipe detail for ID: ${id}`);
-        return data || null;
-      } catch (e) {
-        console.warn("⚠️ Primary detail fetch failed, trying fallback IP...");
-        const fallbackUrl = `http://${BACKEND_IP}:5001/api/indian-recipes/${id}`;
-        const response = await fetch(fallbackUrl);
-        const data = await response.json();
-        console.log(`✅ Fetched recipe detail for ID: ${id} via fallback`);
-        return data || null;
-      }
+      const response = await MealAPI.fetchWithRetry(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await response.json();
+      console.log(`✅ Fetched recipe detail for ID: ${id}`);
+      return data || null;
     } catch (error) {
       console.error("❌ Error getting indian recipe by id:", error);
       return null;
@@ -260,7 +216,7 @@ export const MealAPI = {
   // Get AI Recipe Suggestions
   getAiSuggestions: async (prompt: string, token: string) => {
     try {
-      const { API_URL, BACKEND_IP } = await import("../constants/api");
+      const { API_URL } = await import("../constants/api");
       let url = `${API_URL}/ai/suggestions`;
       console.log(`🔍 Requesting AI suggestions: ${url}`);
 
@@ -270,41 +226,20 @@ export const MealAPI = {
         Authorization: `Bearer ${token}`,
       };
 
-      try {
-        return await (
-          await MealAPI.fetchWithRetry(
-            url,
-            {
-              method: "POST",
-              headers,
-              body,
-            },
-            2,
-            1000,
-            60000,
-          )
-        ) // 60s timeout
-          .json();
-      } catch (e) {
-        console.warn(
-          `[AI Suggestions] Primary failed for ${url}, trying fallback...`,
-        );
-        const fallbackUrl = `http://${BACKEND_IP}:5001/api/ai/suggestions`;
-        return await (
-          await MealAPI.fetchWithRetry(
-            fallbackUrl,
-            {
-              method: "POST",
-              headers,
-              body,
-            },
-            2,
-            1000,
-            60000,
-          )
-        ) // 60s timeout
-          .json();
-      }
+      return await (
+        await MealAPI.fetchWithRetry(
+          url,
+          {
+            method: "POST",
+            headers,
+            body,
+          },
+          2,
+          1000,
+          60000,
+        )
+      ) // 60s timeout
+        .json();
     } catch (error) {
       console.error("❌ Error getting AI suggestions:", error);
       throw error;
@@ -319,7 +254,7 @@ export const MealAPI = {
     context: string = "",
   ) => {
     try {
-      const { API_URL, BACKEND_IP } = await import("../constants/api");
+      const { API_URL } = await import("../constants/api");
       let url = `${API_URL}/ai/generate-full-recipe`;
       console.log(`🔍 Generating full AI recipe: ${url}`);
 
@@ -329,41 +264,20 @@ export const MealAPI = {
         Authorization: `Bearer ${token}`,
       };
 
-      try {
-        return await (
-          await MealAPI.fetchWithRetry(
-            url,
-            {
-              method: "POST",
-              headers,
-              body,
-            },
-            2,
-            1000,
-            60000,
-          )
-        ) // 60s timeout
-          .json();
-      } catch (e) {
-        console.warn(
-          `[AI Generation] Primary failed for ${url}, trying fallback...`,
-        );
-        const fallbackUrl = `http://${BACKEND_IP}:5001/api/ai/generate-full-recipe`;
-        return await (
-          await MealAPI.fetchWithRetry(
-            fallbackUrl,
-            {
-              method: "POST",
-              headers,
-              body,
-            },
-            2,
-            1000,
-            60000,
-          )
-        ) // 60s timeout
-          .json();
-      }
+      return await (
+        await MealAPI.fetchWithRetry(
+          url,
+          {
+            method: "POST",
+            headers,
+            body,
+          },
+          2,
+          1000,
+          60000,
+        )
+      ) // 60s timeout
+        .json();
     } catch (error) {
       console.error("❌ Error generating full AI recipe:", error);
       throw error;
