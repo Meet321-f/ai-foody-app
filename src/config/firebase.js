@@ -12,6 +12,19 @@ const firebaseConfig = {
   measurementId: ENV.FIREBASE_MEASUREMENT_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-export const firestore = getFirestore(app);
+// Initialize Firebase only if API key is present
+let firestore = null;
+
+if (firebaseConfig.apiKey) {
+  try {
+    const app = initializeApp(firebaseConfig);
+    firestore = getFirestore(app);
+    console.log("✅ Firebase initialized successfully");
+  } catch (error) {
+    console.error("❌ Firebase initialization failed:", error.message);
+  }
+} else {
+  console.warn("⚠️ Firebase configuration missing: Skipping initialization. (Only needed for historical Indian recipes)");
+}
+
+export { firestore };
