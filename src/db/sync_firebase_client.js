@@ -7,15 +7,17 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import { ENV } from "../config/env.js";
+
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "***REMOVED***",
-  authDomain: "chet-cd9fc.firebaseapp.com",
-  projectId: "chet-cd9fc",
-  storageBucket: "chet-cd9fc.firebasestorage.app",
-  messagingSenderId: "959897125860",
-  appId: "1:959897125860:web:f7a42bcb7070cd7c32bdf1",
-  measurementId: "G-J4GBEHW48E"
+  apiKey: ENV.FIREBASE_API_KEY,
+  authDomain: ENV.FIREBASE_AUTH_DOMAIN,
+  projectId: ENV.FIREBASE_PROJECT_ID,
+  storageBucket: ENV.FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: ENV.FIREBASE_MESSAGING_SENDER_ID,
+  appId: ENV.FIREBASE_APP_ID,
+  measurementId: ENV.FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
