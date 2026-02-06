@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import { ENV } from "./config/env.js";
 import { db } from "./config/db.js";
-import { favoritesTable, recipesTable, commentsTable, profilesTable, coustomeRecipesTable, vegRecipesTable, nonVegRecipesTable, ratingsTable } from "./db/schema.js";
+import { favoritesTable, recipesTable, commentsTable, profilesTable, coustomeRecipesTable, vegRecipesTable, nonVegRecipesTable } from "./db/schema.js";
 import { and, eq, desc, gt, sql, asc, gte, lte, inArray, ilike } from "drizzle-orm";
 import job from "./config/cron.js";
 import { generateRecipe, getSuggestions, generateFullRecipeData, generateRecipeImage, proxyAiChat, proxyGenerateImage } from "./services/aiService.js";
@@ -141,79 +141,6 @@ app.get("/api/comments/:recipeId", async (req, res) => {
     res.status(200).json(comments);
   } catch (error) {
     console.log("Error fetching comments", error);
-    res.status(500).json({ error: "Something went wrong" });
-  }
-});
-
-app.post("/api/ratings", clerkAuth, async (req, res) => {
-  try {
-    const { recipeId, rating } = req.body;
-    const userId = req.auth.userId;
-
-    if (!userId || !recipeId || rating === undefined) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    if (rating < 1 || rating > 5) {
-      return res.status(400).json({ error: "Rating must be between 1 and 5" });
-    }
-
-    // Check if user already rated this recipe
-    const existing = await db
-      .select()
-      .from(ratingsTable)
-      .where(and(eq(ratingsTable.userId, userId), eq(ratingsTable.recipeId, recipeId)))
-      .limit(1);
-
-    if (existing.length > 0) {
-      // Update existing rating
-      const updated = await db
-        .update(ratingsTable)
-        .set({ rating })
-        .where(eq(ratingsTable.id, existing[0].id))
-        .returning();
-      return res.status(200).json(updated[0]);
-    }
-
-    // Insert new rating
-    const newRating = await db
-      .insert(ratingsTable)
-      .values({
-        userId,
-        recipeId,
-        rating,
-      })
-      .returning();
-
-    res.status(201).json(newRating[0]);
-  } catch (error) {
-    console.log("Error adding/updating rating", error);
-    res.status(500).json({ error: "Something went wrong" });
-  }
-});
-
-app.get("/api/ratings/:recipeId", async (req, res) => {
-  try {
-    const { recipeId } = req.params;
-
-    const ratings = await db
-      .select()
-      .from(ratingsTable)
-      .where(eq(ratingsTable.recipeId, recipeId));
-
-    if (ratings.length === 0) {
-      return res.status(200).json({ averageRating: 0, totalRatings: 0 });
-    }
-
-    const total = ratings.reduce((acc, curr) => acc + curr.rating, 0);
-    const average = total / ratings.length;
-
-    res.status(200).json({
-      averageRating: parseFloat(average.toFixed(1)),
-      totalRatings: ratings.length,
-    });
-  } catch (error) {
-    console.log("Error fetching ratings", error);
     res.status(500).json({ error: "Something went wrong" });
   }
 });
@@ -508,44 +435,6 @@ app.post("/api/ai/generate-recipe", clerkAuth, burstLimiter, dailyAiLimit, async
   }
 });
 
-const addRatingsToRecipes = async (recipes) => {
-  if (!recipes || recipes.length === 0) return recipes;
-  
-  const recipeIds = recipes.map(r => r.id.toString());
-  const allRatings = await db
-    .select()
-    .from(ratingsTable)
-    .where(inArray(ratingsTable.recipeId, recipeIds));
-
-  return recipes.map(recipe => {
-    const recipeRatings = allRatings.filter(r => r.recipeId === recipe.id.toString());
-    const total = recipeRatings.reduce((acc, curr) => acc + curr.rating, 0);
-    const average = recipeRatings.length > 0 ? total / recipeRatings.length : 0;
-    return {
-      ...recipe,
-      averageRating: parseFloat(average.toFixed(1)),
-      totalRatings: recipeRatings.length
-    };
-  });
-};
-
-const addRatingsToRecipe = async (recipe) => {
-  if (!recipe) return recipe;
-  const ratingInfo = await db
-    .select()
-    .from(ratingsTable)
-    .where(eq(ratingsTable.recipeId, recipe.id.toString()));
-
-  const total = ratingInfo.reduce((acc, curr) => acc + curr.rating, 0);
-  const average = ratingInfo.length > 0 ? total / ratingInfo.length : 0;
-  
-  return {
-    ...recipe,
-    averageRating: parseFloat(average.toFixed(1)),
-    totalRatings: ratingInfo.length
-  };
-};
-
 // Custom/Indian Recipes from Firebase Firestore (Cached & Fair Randomized Fetching)
 app.get("/api/indian-recipes", async (req, res) => {
   try {
@@ -560,11 +449,9 @@ app.get("/api/indian-recipes", async (req, res) => {
       .orderBy(sql`RANDOM()`)
       .limit(limit);
 
-    const recipesWithRatings = await addRatingsToRecipes(recipes);
+    console.log(`[Indian Recipes] Successfully fetched ${recipes.length} recipes`);
 
-    console.log(`[Indian Recipes] Successfully fetched ${recipesWithRatings.length} recipes`);
-
-    res.status(200).json({ recipes: recipesWithRatings });
+    res.status(200).json({ recipes });
   } catch (error) {
     console.log("Error fetching indian recipes from NeonDB", error);
     res.status(500).json({ error: "Something went wrong" });
@@ -587,10 +474,8 @@ app.get("/api/indian-recipes/search", async (req, res) => {
       .where(ilike(coustomeRecipesTable.name, `%${q}%`))
       .limit(20);
 
-    const resultsWithRatings = await addRatingsToRecipes(results);
-
-    console.log(`[Indian Recipes Search] Found ${resultsWithRatings.length} results for: ${q}`);
-    res.status(200).json({ recipes: resultsWithRatings }); 
+    console.log(`[Indian Recipes Search] Found ${results.length} results for: ${q}`);
+    res.status(200).json({ recipes: results }); 
   } catch (error) {
     console.log("Error searching indian recipes from NeonDB", error);
     res.status(500).json({ error: "Something went wrong" });
@@ -606,12 +491,7 @@ app.get("/api/indian-recipes/:id", async (req, res) => {
       .from(coustomeRecipesTable)
       .where(eq(coustomeRecipesTable.id, parseInt(id)));
 
-    if (recipe.length === 0) {
-      return res.status(404).json({ error: "Recipe not found" });
-    }
-
-    const recipeWithRating = await addRatingsToRecipe(recipe[0]);
-    res.status(200).json(recipeWithRating);
+    res.status(200).json(recipe[0]);
   } catch (error) {
     console.log("Error fetching indian recipe by id", error);
     res.status(500).json({ error: "Something went wrong" });
@@ -632,12 +512,7 @@ app.get("/api/recipes/:id", async (req, res) => {
 
     const recipe = legacy[0] || veg[0] || nonveg[0];
 
-    if (!recipe) {
-      return res.status(404).json({ error: "Recipe not found" });
-    }
-
-    const recipeWithRating = await addRatingsToRecipe(recipe);
-    res.status(200).json(recipeWithRating);
+    res.status(200).json(recipe);
   } catch (error) {
     console.log("Error fetching recipe by id", error);
     res.status(500).json({ error: "Something went wrong" });
