@@ -211,3 +211,62 @@ export const generateRecipe = async (prompt) => {
   }
   throw new Error("Failed to generate recipe suggestions.");
 };
+
+/**
+ * Proxy for custom AI Chat calls (replaces direct OpenRouter calls in frontend)
+ */
+export const proxyAiChat = async (prompt, model = "openai/gpt-oss-20b:free") => {
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${ENV.OPENROUTER_API_KEY}`,
+        "HTTP-Referer": "https://foody.app",
+        "X-Title": "Foody AI",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(`OpenRouter Proxy Error: ${data.error.message}`);
+    return data;
+  } catch (error) {
+    console.error("AI Chat Proxy Error:", error);
+    throw error;
+  }
+};
+
+/**
+ * Proxy for Image Generation (replaces direct Aigurulab calls in frontend)
+ */
+export const proxyGenerateImage = async (input, model = "sdxl") => {
+  try {
+    const response = await fetch("https://aigurulab.tech/api/generate-image", {
+      method: "POST",
+      headers: {
+        "x-api-key": ENV.AIGURULAB_API_KEY,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        width: 1024,
+        height: 1024,
+        input: input,
+        model: model,
+        aspectRatio: "1:1",
+      })
+    });
+
+    const data = await response.json();
+    // Aigurulab returns the raw image URL or a wrapped response. 
+    // Usually it's { url: "..." } or similar depending on the exact API version.
+    return data;
+  } catch (error) {
+    console.error("Image Generation Proxy Error:", error);
+    throw error;
+  }
+};

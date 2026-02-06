@@ -5,8 +5,9 @@ import { db } from "./config/db.js";
 import { favoritesTable, recipesTable, commentsTable, profilesTable, coustomeRecipesTable, vegRecipesTable, nonVegRecipesTable } from "./db/schema.js";
 import { and, eq, desc, gt, sql, asc, gte, lte, inArray, ilike } from "drizzle-orm";
 import job from "./config/cron.js";
-import { generateRecipe, getSuggestions, generateFullRecipeData, generateRecipeImage } from "./services/aiService.js";
-import { clerkAuth } from "./services/authService.js";
+import { generateRecipe, getSuggestions, generateFullRecipeData, generateRecipeImage, proxyAiChat, proxyGenerateImage } from "./services/aiService.js";
+import { clerkAuth, isOwner } from "./services/authService.js";
+import { dailyAiLimit, proxyChatLimit, proxyImageLimit, burstLimiter, suggestionsLimit } from "./middleware/rateLimiter.js";
 import redisClient from "./config/redis.js";
 import { firestore } from "./config/firebase.js";
 import { doc, getDoc, collection, getDocs } from "firebase/firestore";
@@ -33,9 +34,10 @@ app.get("/api/health", (req, res) => {
   res.status(200).json({ success: true });
 });
 
-app.post("/api/favorites", async (req, res) => {
+app.post("/api/favorites", clerkAuth, async (req, res) => {
   try {
-    const { userId, recipeId, title, image, cookTime, servings } = req.body;
+    const { recipeId, title, image, cookTime, servings } = req.body;
+    const userId = req.auth.userId;
 
     if (!userId || !recipeId || !title) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -60,7 +62,7 @@ app.post("/api/favorites", async (req, res) => {
   }
 });
 
-app.get("/api/favorites/:userId", async (req, res) => {
+app.get("/api/favorites/:userId", clerkAuth, isOwner, async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -76,7 +78,7 @@ app.get("/api/favorites/:userId", async (req, res) => {
   }
 });
 
-app.delete("/api/favorites/:userId/:recipeId", async (req, res) => {
+app.delete("/api/favorites/:userId/:recipeId", clerkAuth, isOwner, async (req, res) => {
   try {
     const { userId, recipeId } = req.params;
 
@@ -93,60 +95,21 @@ app.delete("/api/favorites/:userId/:recipeId", async (req, res) => {
   }
 });
 
-app.get("/api/recipes/:id", async (req, res) => {
+// Duplicate route /api/recipes/:id removed. Comphrensive version is defined below.
+
+// Consolidated duplicate recipe endpoint removed. Using clerkAuth version below.
+
+app.post("/api/comments", clerkAuth, async (req, res) => {
   try {
-    const { id } = req.params;
-    const recipe = await db
-      .select()
-      .from(recipesTable)
-      .where(eq(recipesTable.id, parseInt(id)));
-
-    if (recipe.length === 0) {
-      return res.status(404).json({ error: "Recipe not found" });
-    }
-
-    res.status(200).json(recipe[0]);
-  } catch (error) {
-    console.log("Error fetching recipe by id", error);
-    res.status(500).json({ error: "Something went wrong" });
-  }
-});
-
-app.post("/api/recipes", async (req, res) => {
-  try {
-    const { title, description, ingredients, instructions, image, cookTime, servings } = req.body;
-
-    if (!title) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    const newRecipe = await db
-      .insert(recipesTable)
-      .values({
-        title,
-        description,
-        ingredients,
-        instructions,
-        image,
-        cookTime,
-        servings,
-      })
-      .returning();
-
-    res.status(201).json(newRecipe[0]);
-  } catch (error) {
-    console.log("Error adding recipe", error);
-    res.status(500).json({ error: "Something went wrong" });
-  }
-});
-
-app.post("/api/comments", async (req, res) => {
-  try {
-    const { userId, recipeId, text, userName } = req.body;
+    const { recipeId, text } = req.body;
+    const userId = req.auth.userId;
 
     if (!userId || !recipeId || !text) {
       return res.status(400).json({ error: "Missing required fields" });
     }
+
+    // Fetch user profile info to prevent name/image spoofing
+    const [profile] = await db.select().from(profilesTable).where(eq(profilesTable.userId, userId)).limit(1);
 
     const newComment = await db
       .insert(commentsTable)
@@ -154,7 +117,7 @@ app.post("/api/comments", async (req, res) => {
         userId,
         recipeId: recipeId,
         text,
-        userName,
+        userName: profile?.name || "Foody User",
       })
       .returning();
 
@@ -183,13 +146,11 @@ app.get("/api/comments/:recipeId", async (req, res) => {
 });
 
 // Profile endpoints
-app.post("/api/profiles", async (req, res) => {
+// Profile endpoints
+app.post("/api/profiles", clerkAuth, async (req, res) => {
   try {
-    const { userId, name, email, bio, profileImage } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
+    const { name, email, bio, profileImage } = req.body;
+    const userId = req.auth.userId;
 
     const newProfile = await db
       .insert(profilesTable)
@@ -209,7 +170,15 @@ app.post("/api/profiles", async (req, res) => {
   }
 });
 
-app.get("/api/profiles/:userId", async (req, res) => {
+// Helper for optional auth
+const optionalClerkAuth = async (req, res, next) => {
+  if (req.headers.authorization) {
+    return clerkAuth(req, res, next);
+  }
+  next();
+};
+
+app.get("/api/profiles/:userId", optionalClerkAuth, async (req, res) => {
   try {
     const { userId } = req.params;
 
@@ -222,14 +191,24 @@ app.get("/api/profiles/:userId", async (req, res) => {
       return res.status(404).json({ error: "Profile not found" });
     }
 
-    res.status(200).json(profile[0]);
+    const profileData = profile[0];
+    const authUserId = req.auth?.userId;
+    const isOwnerOfProfile = authUserId && authUserId === userId;
+
+    if (!isOwnerOfProfile) {
+      // Return public data only (hide sensitive fields)
+      const { email, ...publicData } = profileData;
+      return res.status(200).json(publicData);
+    }
+
+    res.status(200).json(profileData);
   } catch (error) {
     console.log("Error fetching profile", error);
     res.status(500).json({ error: "Something went wrong" });
   }
 });
 
-app.put("/api/profiles/:userId", async (req, res) => {
+app.put("/api/profiles/:userId", clerkAuth, isOwner, async (req, res) => {
   try {
     const { userId } = req.params;
     const { name, email, bio, profileImage } = req.body;
@@ -258,7 +237,7 @@ app.put("/api/profiles/:userId", async (req, res) => {
 });
 
 // AI endpoints
-app.post("/api/ai/suggestions", clerkAuth, async (req, res) => {
+app.post("/api/ai/suggestions", clerkAuth, burstLimiter, suggestionsLimit, async (req, res) => {
   try {
     const { prompt } = req.body;
     const userId = req.auth.userId;
@@ -275,7 +254,7 @@ app.post("/api/ai/suggestions", clerkAuth, async (req, res) => {
   }
 });
 
-app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
+app.post("/api/ai/generate-full-recipe", clerkAuth, burstLimiter, dailyAiLimit, async (req, res) => {
   try {
     const { title, context } = req.body;
     const skipImage = true; // Always skip image generation for now as requested
@@ -283,22 +262,6 @@ app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
     console.log(`[AI Full Recipe] User ${userId} requested for: ${title} (Forced SkipImage)`);
 
     if (!title) return res.status(400).json({ error: "Title is required" });
-
-    // 1. Check Daily Limit (3 recipes per day) using Redis
-    let dailyCount = 0;
-    const limitKey = `limit:ai:${userId}`;
-    try {
-      dailyCount = await redisClient.get(limitKey);
-    } catch (e) {
-      console.warn("Redis rate limit check failed, proceeding without limit check:", e.message);
-    }
-
-    if (dailyCount && parseInt(dailyCount) >= 10) { // Increased to 10 for testing
-      return res.status(403).json({
-        success: false,
-        error: "Daily limit reached! 👨‍🍳 You can only generate 10 recipes every 24 hours. Please try again later."
-      });
-    }
 
     // 2. Sequential Generation: Recipe First, then Image
     // This allows us to use the specific 'imagePrompt' generated by the LLM
@@ -380,15 +343,6 @@ app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
       }).returning();
     }
 
-    // Increment Limit in Redis
-    try {
-      const newCount = await redisClient.incr(limitKey);
-      if (newCount === 1) {
-        await redisClient.expire(limitKey, 86400); // 24 hours
-      }
-    } catch (e) {
-       console.warn("Redis rate limit increment failed:", e.message);
-    }
 
     res.status(200).json({
       success: true,
@@ -410,7 +364,33 @@ app.post("/api/ai/generate-full-recipe", clerkAuth, async (req, res) => {
   }
 });
 
-app.post("/api/ai/generate-recipe", clerkAuth, async (req, res) => {
+/**
+ * PROXY CHAT: Secure replacement for direct OpenRouter calls
+ */
+app.post("/api/ai/proxy-chat", clerkAuth, burstLimiter, proxyChatLimit, async (req, res) => {
+  try {
+    const { prompt, model } = req.body;
+    const result = await proxyAiChat(prompt, model);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * PROXY IMAGE: Secure replacement for direct Aigurulab calls
+ */
+app.post("/api/ai/proxy-image", clerkAuth, burstLimiter, proxyImageLimit, async (req, res) => {
+  try {
+    const { prompt, model } = req.body; // 'prompt' is the input for Aigurulab
+    const result = await proxyGenerateImage(prompt, model);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post("/api/ai/generate-recipe", clerkAuth, burstLimiter, dailyAiLimit, async (req, res) => {
   try {
     const { prompt } = req.body;
     const userId = req.auth.userId;
@@ -461,13 +441,15 @@ app.get("/api/indian-recipes", async (req, res) => {
     const limit = parseInt(req.query.limit) || 12;
     const offset = parseInt(req.query.offset) || 0;
     
-    console.log(`[Indian Recipes] Fetching from NeonDB (Limit: ${limit}, Offset: ${offset})`);
+    console.log(`[Indian Recipes] Fetching random recipes from NeonDB (Limit: ${limit})`);
 
     const recipes = await db
       .select()
       .from(coustomeRecipesTable)
-      .limit(limit)
-      .offset(offset);
+      .orderBy(sql`RANDOM()`)
+      .limit(limit);
+
+    console.log(`[Indian Recipes] Successfully fetched ${recipes.length} recipes`);
 
     res.status(200).json({ recipes });
   } catch (error) {
@@ -545,9 +527,9 @@ app.get("/api/recipes/:id", async (req, res) => {
   }
 });
 
-app.get("/api/ai/history/:userId", clerkAuth, async (req, res) => {
+app.get("/api/ai/history/:userId", clerkAuth, isOwner, async (req, res) => {
   try {
-    const userId = req.auth.userId;
+    const { userId } = req.params;
     console.log(`[AI History] Authenticated User: ${userId}`);
 
     const history = await db
@@ -578,8 +560,6 @@ app.post("/api/recipes", clerkAuth, async (req, res) => {
       image, 
       cookTime, 
       servings, 
-      userName, 
-      userImage, 
       isPublic,
       dietType // "veg" or "non-veg"
     } = req.body;
@@ -589,6 +569,9 @@ app.post("/api/recipes", clerkAuth, async (req, res) => {
     if (!title) {
       return res.status(400).json({ error: "Title is required" });
     }
+
+    // Fetch user profile info to prevent identity spoofing
+    const [profile] = await db.select().from(profilesTable).where(eq(profilesTable.userId, userId)).limit(1);
 
     const targetTable = dietType === "veg" ? vegRecipesTable : (dietType === "non-veg" ? nonVegRecipesTable : recipesTable);
 
@@ -603,8 +586,8 @@ app.post("/api/recipes", clerkAuth, async (req, res) => {
         cookTime,
         servings,
         userId,
-        userName,
-        userImage,
+        userName: profile?.name || "Foody User",
+        userImage: profile?.profileImage || null,
         isPublic: isPublic ? "true" : "false",
       })
       .returning();
@@ -661,15 +644,18 @@ app.get("/api/community/recipes", async (req, res) => {
   }
 });
 
-app.get("/api/recipes/user/:userId", clerkAuth, async (req, res) => {
+app.get("/api/recipes/user/:userId", clerkAuth, isOwner, async (req, res) => {
   try {
-    const userId = req.auth.userId;
-    console.log(`[User Recipes] Fetching for: ${userId}`);
+    const { userId } = req.params;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = parseInt(req.query.offset) || 0;
+
+    console.log(`[User Recipes] Fetching for: ${userId} (Limit: ${limit}, Offset: ${offset})`);
 
     const [legacyRecipes, vegRecipes, nonVegRecipes] = await Promise.all([
-      db.select().from(recipesTable).where(eq(recipesTable.userId, userId)),
-      db.select().from(vegRecipesTable).where(eq(vegRecipesTable.userId, userId)),
-      db.select().from(nonVegRecipesTable).where(eq(nonVegRecipesTable.userId, userId))
+      db.select().from(recipesTable).where(eq(recipesTable.userId, userId)).limit(limit).offset(offset),
+      db.select().from(vegRecipesTable).where(eq(vegRecipesTable.userId, userId)).limit(limit).offset(offset),
+      db.select().from(nonVegRecipesTable).where(eq(nonVegRecipesTable.userId, userId)).limit(limit).offset(offset)
     ]);
 
     const allRecipes = [...legacyRecipes, ...vegRecipes, ...nonVegRecipes]

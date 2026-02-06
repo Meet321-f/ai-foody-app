@@ -48,3 +48,26 @@ export const clerkAuth = async (req, res, next) => {
     });
   }
 };
+
+/**
+ * Middleware to verify ownership of a resource.
+ * Checks if the authenticated user's ID matches the requested userId in the parameters.
+ */
+export const isOwner = async (req, res, next) => {
+  try {
+    const authUserId = req.auth?.userId;
+    const requestedUserId = req.params.userId;
+
+    if (!authUserId || authUserId !== requestedUserId) {
+      return res.status(403).json({
+        success: false,
+        error: "Forbidden: You are not allowed to access this resource"
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error("Ownership Middleware Error:", error.message);
+    return res.status(500).json({ success: false, error: "Server error during authorization." });
+  }
+};
