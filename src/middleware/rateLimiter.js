@@ -118,12 +118,12 @@ export const suggestionsLimit = createRateLimiter({
   failClosed: false // Safe to fail-open for suggestions
 });
 
-// 2. Daily AI Recipe Generation Limit (10 per 24h)
+// 2. Daily AI Recipe Generation Limit (3 per 24h)
 export const dailyAiLimit = createRateLimiter({
   name: "ai_gen",
-  limit: 10,
+  limit: 3,
   windowSeconds: 24 * 60 * 60,
-  errorMessage: "Daily AI generation limit reached (10/day). Please try again tomorrow.",
+  errorMessage: "try again , today credit is over",
   failClosed: true // Paid API: Fail-closed to protect quota
 });
 
