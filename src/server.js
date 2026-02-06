@@ -31,7 +31,7 @@ app.use((req, res, next) => {
 });
 
 app.get("/api/health", (req, res) => {
-  res.status(200).json({ success: true });
+  res.status(200).json({ success: true, version: "v1.4.2-ratings-debug" });
 });
 
 app.post("/api/favorites", clerkAuth, async (req, res) => {
