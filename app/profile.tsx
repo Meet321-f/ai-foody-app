@@ -162,8 +162,8 @@ const ProfileScreen = () => {
           >
             FOODY
           </Text>
-          <TouchableOpacity onPress={() => {}}>
-            <Ionicons name="ellipsis-vertical" size={24} color={COLORS.gold} />
+          <TouchableOpacity onPress={() => router.push("/setting")}>
+            <Ionicons name="settings-outline" size={24} color={COLORS.gold} />
           </TouchableOpacity>
         </View>
 
