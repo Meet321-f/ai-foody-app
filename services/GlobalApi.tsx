@@ -1,49 +1,47 @@
 import axios from "axios";
+import { API_URL } from "../constants/api";
 
-const AiModel = async (prompt: string) => {
+const getBackendUrl = () => {
+  return API_URL;
+};
+
+const AiModel = async (prompt: string, token: string) => {
   const response = await axios.post(
-    "https://openrouter.ai/api/v1/chat/completions",
+    `${getBackendUrl()}/ai/proxy-chat`,
     {
+      prompt,
       model: "openai/gpt-oss-20b:free",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
     },
     {
       headers: {
-        Authorization: `Bearer ${process.env.EXPO_PUBLIC_OPENROUTER_API_KEY}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-    }
+    },
   );
   return response.data;
 };
 
-const BASE_URL = "https://aigurulab.tech";
-const GenerateAiImage = async (input: string) =>
+const GenerateAiImage = async (input: string, token: string) =>
   await axios.post(
-    BASE_URL + "/api/generate-image",
+    `${getBackendUrl()}/ai/proxy-image`,
     {
-      width: 1024,
-      height: 1024,
-      input: input,
-      model: "sdxl", //'flux'
-      aspectRatio: "1:1",
+      prompt: input,
+      model: "sdxl",
     },
     {
       headers: {
-        "x-api-key": process.env.EXPO_PUBLIC_AIGURULAB_API_KEY, // Your API Key
-        "Content-Type": "application/json", // Content Type
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
       },
-    }
+    },
   );
-
-const BACKEND_API_URL = "http://10.0.2.2:5001/api";
 
 const createRecipe = async (data: any) => {
   try {
-    console.log("Calling createRecipe with URL:", `${BACKEND_API_URL}/recipes`);
+    console.log("Calling createRecipe with URL:", `${getBackendUrl()}/recipes`);
     console.log("Data:", JSON.stringify(data, null, 2));
-    const response = await axios.post(`${BACKEND_API_URL}/recipes`, data);
+    const response = await axios.post(`${getBackendUrl()}/recipes`, data);
     console.log("createRecipe response:", response.data);
     return response.data;
   } catch (error: any) {
