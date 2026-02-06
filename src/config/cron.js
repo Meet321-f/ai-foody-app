@@ -1,6 +1,6 @@
 import https from "https";
 
-const URL = "https://food-lsat.onrender.com/api/health";
+const URL = "https://ai-foody-app-4.onrender.com/api/health";
 
 const start = () => {
   console.log("---------------------------------------------------------");
