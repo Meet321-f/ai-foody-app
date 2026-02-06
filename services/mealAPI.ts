@@ -25,7 +25,14 @@ export const MealAPI = {
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
+          let errorMsg = `HTTP ${response.status}`;
+          try {
+            const errorData = await response.json();
+            errorMsg = errorData.message || errorData.error || errorMsg;
+          } catch (e) {
+            // Not a JSON response, fallback to default status text
+          }
+          throw new Error(errorMsg);
         }
         return response;
       } catch (err) {
