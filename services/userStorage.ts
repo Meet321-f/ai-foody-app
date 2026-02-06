@@ -36,7 +36,7 @@ export const UserStorageService = {
       const existing = await UserStorageService.getFavorites(userId);
 
       const updated = existing.filter(
-        (r) => r.id.toString() !== recipeId.toString()
+        (r) => r.id.toString() !== recipeId.toString(),
       );
       await AsyncStorage.setItem(key, JSON.stringify(updated));
     } catch (error) {
@@ -108,6 +108,25 @@ export const UserStorageService = {
     } catch (error) {
       console.error("Error getting AI history locally:", error);
       return [];
+    }
+  },
+
+  /**
+   * Get a specific AI recipe by ID for a user
+   */
+  getAiRecipeById: async (
+    userId: string,
+    recipeId: string,
+  ): Promise<Recipe | null> => {
+    if (!userId) return null;
+    try {
+      const history = await UserStorageService.getAiHistory(userId);
+      return (
+        history.find((r) => r.id.toString() === recipeId.toString()) || null
+      );
+    } catch (error) {
+      console.error("Error getting AI recipe by ID:", error);
+      return null;
     }
   },
 

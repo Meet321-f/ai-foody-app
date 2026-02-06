@@ -115,8 +115,11 @@ const MessageBubble = ({
               style={styles.recipeCard}
               onPress={() =>
                 router.push({
-                  pathname: `/recipe/${message.recipe?.id}`,
-                  params: { fullRecipe: JSON.stringify(message.recipe) },
+                  pathname: `/recipe/ai-detail`,
+                  params: {
+                    id: message.recipe?.id,
+                    fullRecipe: JSON.stringify(message.recipe),
+                  },
                 })
               } // Navigate with data
             >
@@ -532,7 +535,7 @@ const AiScreen = () => {
                       onPress={() => {
                         setShowHistory(false);
                         router.push({
-                          pathname: "/recipe/[id]",
+                          pathname: "/recipe/ai-detail",
                           params: {
                             id: item.id.toString(),
                             fullRecipe: JSON.stringify(item),

@@ -13,7 +13,7 @@ import * as Speech from "expo-speech";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { useEffect, useState } from "react";
-import { useUser } from "@clerk/clerk-expo";
+import { useUser, useAuth } from "@clerk/clerk-expo";
 import { API_URL } from "../../constants/api";
 import { MealAPI } from "../../services/mealAPI";
 import { UserStorageService } from "../../services/userStorage";
@@ -83,6 +83,10 @@ const RecipeDetailScreen = () => {
   const [commentInput, setCommentInput] = useState<string>("");
   const [playingVideo, setPlayingVideo] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [userRating, setUserRating] = useState<number>(0);
+  const [avgRating, setAvgRating] = useState<number>(0);
+  const [totalRatings, setTotalRatings] = useState<number>(0);
+  const { getToken } = useAuth();
 
   const { user } = useUser();
   const userId = user?.id;
@@ -151,10 +155,43 @@ const RecipeDetailScreen = () => {
       letterSpacing: 1,
     },
     recipeTitle: {
-      fontSize: 34,
+      fontSize: 32,
       fontWeight: "900",
       color: "#FFF",
-      lineHeight: 38,
+      marginBottom: 8,
+      lineHeight: 40,
+    },
+    ratingSection: {
+      backgroundColor: "rgba(255,255,255,0.03)",
+      borderRadius: 20,
+      padding: 20,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.05)",
+    },
+    avgRatingBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: COLORS.primary,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 8,
+      gap: 4,
+    },
+    avgRatingText: { color: "#000", fontWeight: "900", fontSize: 14 },
+    totalRatingsText: {
+      color: "rgba(255,255,255,0.4)",
+      fontSize: 13,
+      fontWeight: "600",
+    },
+    rateTitle: {
+      color: "#FFF",
+      fontSize: 14,
+      fontWeight: "800",
+      marginBottom: 12,
+    },
+    starsContainer: { flexDirection: "row", gap: 12 },
+    category: {
       marginBottom: 20,
       letterSpacing: -0.5,
       fontFamily: Platform.OS === "ios" ? "Lexend" : "sans-serif",
@@ -426,6 +463,53 @@ const RecipeDetailScreen = () => {
     }
   };
 
+  const loadRating = async () => {
+    if (recipeId) {
+      const ratingInfo = await MealAPI.getRecipeRating(recipeId);
+      setAvgRating(ratingInfo.averageRating || 0);
+      setTotalRatings(ratingInfo.totalRatings || 0);
+    }
+  };
+
+  useEffect(() => {
+    loadRecipeDetail();
+    loadRating();
+    loadComments();
+    checkIfSaved();
+
+    return () => {
+      // Stop speech when leaving the screen
+      Speech.stop();
+    };
+  }, [recipeId, userId]);
+
+  const handleRate = async (rating: number) => {
+    if (!userId) {
+      Alert.alert("Login Required", "Please login to rate this recipe.");
+      return;
+    }
+
+    if (!recipeId) return;
+
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      setUserRating(rating);
+      await MealAPI.saveRating(recipeId, rating, token);
+
+      // Refresh rating
+      const ratingInfo = await MealAPI.getRecipeRating(recipeId);
+      setAvgRating(ratingInfo.averageRating || 0);
+      setTotalRatings(ratingInfo.totalRatings || 0);
+
+      Alert.alert("Thank you!", "Your rating has been submitted.");
+    } catch (error) {
+      console.error("Error submitting rating:", error);
+      Alert.alert("Error", "Could not save your rating.");
+    }
+  };
+
   const checkIfSaved = async () => {
     if (!userId || !recipeId) return;
 
@@ -454,17 +538,6 @@ const RecipeDetailScreen = () => {
       console.error("Error loading comments:", error);
     }
   };
-
-  useEffect(() => {
-    loadRecipeDetail();
-    loadComments();
-    checkIfSaved();
-
-    return () => {
-      // Stop speech when leaving the screen
-      Speech.stop();
-    };
-  }, [recipeId, userId]);
 
   const toggleVoiceAssistant = async () => {
     if (isSpeaking) {
@@ -785,6 +858,53 @@ const RecipeDetailScreen = () => {
                 </View>
               )}
             </ScrollView>
+
+            {/* Rating Section */}
+            <View style={styles.ratingSection}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 15,
+                }}
+              >
+                <View style={styles.avgRatingBadge}>
+                  <Ionicons name="star" size={16} color="#000" />
+                  <Text style={styles.avgRatingText}>
+                    {avgRating > 0 ? avgRating.toFixed(1) : "NEW"}
+                  </Text>
+                </View>
+                <Text style={styles.totalRatingsText}>
+                  {totalRatings} reviews
+                </Text>
+              </View>
+
+              <Text style={styles.rateTitle}>Rate this experience</Text>
+              <View style={styles.starsContainer}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <TouchableOpacity
+                    key={star}
+                    onPress={() => handleRate(star)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={
+                        star <= (userRating || Math.floor(avgRating))
+                          ? "star"
+                          : "star-outline"
+                      }
+                      size={32}
+                      color={
+                        star <= (userRating || Math.floor(avgRating))
+                          ? COLORS.primary
+                          : "rgba(255,255,255,0.2)"
+                      }
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
 
             {/* VIDEO SECTION */}
             {recipe.youtubeUrl && (

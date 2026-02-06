@@ -190,7 +190,9 @@ function RecipeCard({ recipe }: RecipeCardProps) {
       <View style={styles.topInfo}>
         <View style={styles.ratingBadge}>
           <Text style={styles.starText}>★</Text>
-          <Text style={styles.ratingText}>4.9</Text>
+          <Text style={styles.ratingText}>
+            {recipe.averageRating ? recipe.averageRating.toFixed(1) : "4.5"}
+          </Text>
         </View>
         <TouchableOpacity style={styles.saveButton}>
           <Ionicons name="heart-outline" size={18} color="#FFF" />
