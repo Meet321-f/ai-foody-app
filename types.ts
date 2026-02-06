@@ -13,8 +13,6 @@ export interface Recipe {
   prepTime?: string;
   calories?: string;
   difficulty?: string;
-  averageRating?: number;
-  totalRatings?: number;
   [key: string]: any;
 }
 

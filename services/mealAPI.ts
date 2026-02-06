@@ -450,43 +450,4 @@ export const MealAPI = {
       originalData: meal,
     };
   },
-
-  /**
-   * Fetch rating info for a recipe
-   */
-  getRecipeRating: async (recipeId: string | number) => {
-    try {
-      const response = await MealAPI.fetchWithRetry(
-        `${API_URL}/ratings/${recipeId}`,
-      );
-      return await response.json();
-    } catch (error) {
-      console.error("Error fetching rating:", error);
-      return { averageRating: 0, totalRatings: 0 };
-    }
-  },
-
-  /**
-   * Submit a user rating for a recipe
-   */
-  saveRating: async (
-    recipeId: string | number,
-    rating: number,
-    token: string,
-  ) => {
-    try {
-      const response = await MealAPI.fetchWithRetry(`${API_URL}/ratings`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ recipeId: recipeId.toString(), rating }),
-      });
-      return await response.json();
-    } catch (error) {
-      console.error("Error saving rating:", error);
-      throw error;
-    }
-  },
 };

@@ -83,9 +83,6 @@ const RecipeDetailScreen = () => {
   const [commentInput, setCommentInput] = useState<string>("");
   const [playingVideo, setPlayingVideo] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [userRating, setUserRating] = useState<number>(0);
-  const [avgRating, setAvgRating] = useState<number>(0);
-  const [totalRatings, setTotalRatings] = useState<number>(0);
   const { getToken } = useAuth();
 
   const { user } = useUser();
@@ -463,17 +460,8 @@ const RecipeDetailScreen = () => {
     }
   };
 
-  const loadRating = async () => {
-    if (recipeId) {
-      const ratingInfo = await MealAPI.getRecipeRating(recipeId);
-      setAvgRating(ratingInfo.averageRating || 0);
-      setTotalRatings(ratingInfo.totalRatings || 0);
-    }
-  };
-
   useEffect(() => {
     loadRecipeDetail();
-    loadRating();
     loadComments();
     checkIfSaved();
 
@@ -482,33 +470,6 @@ const RecipeDetailScreen = () => {
       Speech.stop();
     };
   }, [recipeId, userId]);
-
-  const handleRate = async (rating: number) => {
-    if (!userId) {
-      Alert.alert("Login Required", "Please login to rate this recipe.");
-      return;
-    }
-
-    if (!recipeId) return;
-
-    try {
-      const token = await getToken();
-      if (!token) return;
-
-      setUserRating(rating);
-      await MealAPI.saveRating(recipeId, rating, token);
-
-      // Refresh rating
-      const ratingInfo = await MealAPI.getRecipeRating(recipeId);
-      setAvgRating(ratingInfo.averageRating || 0);
-      setTotalRatings(ratingInfo.totalRatings || 0);
-
-      Alert.alert("Thank you!", "Your rating has been submitted.");
-    } catch (error) {
-      console.error("Error submitting rating:", error);
-      Alert.alert("Error", "Could not save your rating.");
-    }
-  };
 
   const checkIfSaved = async () => {
     if (!userId || !recipeId) return;
@@ -858,53 +819,6 @@ const RecipeDetailScreen = () => {
                 </View>
               )}
             </ScrollView>
-
-            {/* Rating Section */}
-            <View style={styles.ratingSection}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 10,
-                  marginBottom: 15,
-                }}
-              >
-                <View style={styles.avgRatingBadge}>
-                  <Ionicons name="star" size={16} color="#000" />
-                  <Text style={styles.avgRatingText}>
-                    {avgRating > 0 ? avgRating.toFixed(1) : "NEW"}
-                  </Text>
-                </View>
-                <Text style={styles.totalRatingsText}>
-                  {totalRatings} reviews
-                </Text>
-              </View>
-
-              <Text style={styles.rateTitle}>Rate this experience</Text>
-              <View style={styles.starsContainer}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <TouchableOpacity
-                    key={star}
-                    onPress={() => handleRate(star)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons
-                      name={
-                        star <= (userRating || Math.floor(avgRating))
-                          ? "star"
-                          : "star-outline"
-                      }
-                      size={32}
-                      color={
-                        star <= (userRating || Math.floor(avgRating))
-                          ? COLORS.primary
-                          : "rgba(255,255,255,0.2)"
-                      }
-                    />
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
 
             {/* VIDEO SECTION */}
             {recipe.youtubeUrl && (
