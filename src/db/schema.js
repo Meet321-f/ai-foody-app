@@ -89,3 +89,13 @@ export const nonVegRecipesTable = pgTable("non_veg_recipes", {
   isPublic: text("is_public").default("false"),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const reportsTable = pgTable("reports", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  recipeId: text("recipe_id").notNull(),
+  recipeTitle: text("recipe_title"),
+  reason: text("reason").notNull(),
+  status: text("status").default("pending"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
