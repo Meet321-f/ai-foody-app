@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,27 +8,57 @@ import {
   Switch,
   Platform,
   Alert,
+  TextInput,
 } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useUserProfile } from "../hooks/useUserProfile";
 import { useTheme } from "../contexts/ThemeContext";
 import { COLORS } from "../constants/colors";
 import SafeScreen from "../components/SafeScreen";
 import { BlurView } from "expo-blur";
+import * as Haptics from "expo-haptics";
 
 const DEFAULT_IMAGE = require("../assets/images/default.png");
 
 const SettingsScreen = () => {
   const router = useRouter();
   const { signOut } = useAuth();
-  const { profile } = useUserProfile();
+  const { user } = useUser();
+  const { profile, updateProfile } = useUserProfile();
   const { isDarkMode, toggleTheme } = useTheme();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [newName, setNewName] = useState(profile?.name || "");
+  const [isSavingName, setIsSavingName] = useState(false);
+
+  useEffect(() => {
+    if (profile?.name) {
+      setNewName(profile.name);
+    }
+  }, [profile?.name]);
+
+  const handleSaveName = async () => {
+    if (newName.trim() === "") {
+      Alert.alert("Error", "Name cannot be empty");
+      return;
+    }
+    setIsSavingName(true);
+    try {
+      await updateProfile({ name: newName });
+      console.log("name is change successfully");
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch (error) {
+      console.error("Error updating name:", error);
+    } finally {
+      setIsSavingName(false);
+    }
+  };
 
   const handleToggleNotifications = () =>
     setNotificationsEnabled((prev) => !prev);
@@ -50,6 +80,32 @@ const SettingsScreen = () => {
             },
           },
         ]);
+      } else if (route === "delete-account") {
+        Alert.alert(
+          "Delete Account",
+          "Are you sure you want to delete your account? This action is permanent and cannot be undone.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Delete",
+              style: "destructive",
+              onPress: async () => {
+                try {
+                  await user?.delete();
+                  router.replace("/(auth)/sign-in");
+                } catch (error) {
+                  console.error("Error deleting account:", error);
+                  Alert.alert(
+                    "Error",
+                    "Failed to delete account. Please try again.",
+                  );
+                }
+              },
+            },
+          ],
+        );
+      } else if (route === "admin-reports") {
+        router.push("/admin/reports");
       }
     } catch (error) {
       console.error("Navigation error pushing route:", route, error);
@@ -73,38 +129,71 @@ const SettingsScreen = () => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* PROFILE SECTION */}
-          <View style={styles.profileSection}>
-            <View style={styles.avatarContainer}>
-              <LinearGradient
-                colors={[COLORS.gold, COLORS.amber || "#F59E0B"]}
-                style={styles.avatarGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Image
-                  source={
-                    profile?.image ? { uri: profile.image } : DEFAULT_IMAGE
-                  }
-                  style={styles.profileImage}
-                  contentFit="cover"
-                />
-              </LinearGradient>
-              <View style={styles.statusDot} />
-            </View>
-            <Text style={styles.profileName}>
-              {profile?.name || "Guest User"}
-            </Text>
-            <Text style={styles.profileEmail}>
-              {profile?.email || "Sign in to sync data"}
-            </Text>
+          {/* PROFILE SECTION - REDESIGNED */}
+          <View style={styles.profileCard}>
+            <BlurView
+              intensity={40}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.profileCardContent}>
+              <View style={styles.cardRow}>
+                <Ionicons name="person-outline" size={20} color={COLORS.gold} />
+                <View style={styles.cardTextContainer}>
+                  <Text style={styles.cardLabel}>Full Name</Text>
+                  <TextInput
+                    style={styles.cardInput}
+                    value={newName}
+                    onChangeText={setNewName}
+                    placeholder="Enter your name"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                  />
+                </View>
+                {newName !== profile?.name && (
+                  <TouchableOpacity
+                    onPress={handleSaveName}
+                    disabled={isSavingName}
+                    style={{
+                      padding: 8,
+                      backgroundColor: "rgba(212,175,55,0.15)",
+                      borderRadius: 10,
+                    }}
+                  >
+                    <Ionicons
+                      name={isSavingName ? "refresh" : "checkmark"}
+                      size={20}
+                      color={COLORS.gold}
+                    />
+                  </TouchableOpacity>
+                )}
+                {newName === profile?.name && (
+                  <Ionicons
+                    name="create-outline"
+                    size={16}
+                    color="rgba(212,175,55,0.5)"
+                  />
+                )}
+              </View>
 
-            <TouchableOpacity
-              style={styles.editProfileButton}
-              onPress={() => handlePress("profile")}
-            >
-              <Text style={styles.editProfileText}>Edit Profile</Text>
-            </TouchableOpacity>
+              <View style={styles.cardDivider} />
+
+              <View style={styles.cardRow}>
+                <Ionicons name="mail-outline" size={20} color={COLORS.gold} />
+                <View style={styles.cardTextContainer}>
+                  <Text style={styles.cardLabel}>Email Address</Text>
+                  <Text style={styles.cardValue}>
+                    {user?.primaryEmailAddress?.emailAddress ||
+                      profile?.email ||
+                      "Guest User"}
+                  </Text>
+                </View>
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={16}
+                  color="rgba(255,255,255,0.2)"
+                />
+              </View>
+            </View>
           </View>
 
           {/* ACCOUNT SECTION */}
@@ -115,13 +204,6 @@ const SettingsScreen = () => {
               tint="dark"
               style={StyleSheet.absoluteFill}
             />
-            <SettingRow
-              icon="person-outline"
-              label="Profile Details"
-              onPress={() => handlePress("profile")}
-              iconColor="#FF9F43"
-            />
-            <View style={styles.divider} />
             <SettingRow
               icon="shield-checkmark-outline"
               label="Security"
@@ -184,18 +266,56 @@ const SettingsScreen = () => {
               onPress={() => handlePress("rate")}
               iconColor="#5F27CD"
             />
+            <View style={styles.divider} />
+            <SettingRow
+              icon="document-text-outline"
+              label="Privacy Policy"
+              onPress={() =>
+                Alert.alert(
+                  "Privacy Policy",
+                  "Redirecting to privacy policy...",
+                )
+              }
+              iconColor="#10AC84"
+            />
           </View>
 
-          {/* LOGOUT */}
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={() => handlePress("logout")}
-          >
-            <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
-            <Text style={styles.logoutText}>Log Out</Text>
-          </TouchableOpacity>
+          {/* ADMIN SECTION */}
+          <Text style={styles.sectionTitle}>Administrator</Text>
+          <View style={styles.card}>
+            <BlurView
+              intensity={30}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+            />
+            <SettingRow
+              icon="stats-chart-outline"
+              label="AI Content Reports"
+              onPress={() => handlePress("admin-reports")}
+              iconColor={COLORS.gold}
+            />
+          </View>
 
-          <Text style={styles.versionText}>Version 1.0.0</Text>
+          {/* ACCOUNT ACTIONS */}
+          <View style={styles.actionSection}>
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={() => handlePress("logout")}
+            >
+              <Ionicons name="log-out-outline" size={20} color="#FF3B30" />
+              <Text style={styles.logoutText}>Log Out</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => handlePress("delete-account")}
+            >
+              <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+              <Text style={styles.deleteText}>Delete Account</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.versionText}>Version 1.0.1</Text>
         </ScrollView>
       </View>
     </SafeScreen>
@@ -297,66 +417,51 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: 40,
+    paddingTop: 10,
   },
-  profileSection: {
-    alignItems: "center",
-    marginBottom: 32,
-    marginTop: 10,
-  },
-  avatarContainer: {
-    position: "relative",
-    marginBottom: 16,
-  },
-  avatarGradient: {
-    padding: 3,
-    borderRadius: 60,
-    elevation: 10,
-    shadowColor: COLORS.gold,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-  },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 2,
-    borderColor: "#000",
-  },
-  statusDot: {
-    position: "absolute",
-    bottom: 5,
-    right: 5,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "#2ECC71",
-    borderWidth: 3,
-    borderColor: "#000",
-  },
-  profileName: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#FFF",
-  },
-  profileEmail: {
-    fontSize: 14,
-    color: COLORS.textLight,
-    marginTop: 4,
-  },
-  editProfileButton: {
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.08)",
+  profileCard: {
+    borderRadius: 24,
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderColor: "rgba(212, 175, 55, 0.25)",
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    marginBottom: 20,
   },
-  editProfileText: {
+  profileCardContent: {
+    padding: 20,
+  },
+  cardRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  cardTextContainer: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  cardLabel: {
+    fontSize: 12,
+    color: COLORS.gold,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  cardInput: {
+    fontSize: 17,
     color: "#FFF",
-    fontSize: 13,
     fontWeight: "600",
+    padding: 0,
+  },
+  cardValue: {
+    fontSize: 16,
+    color: "rgba(255,255,255,0.7)",
+    fontWeight: "500",
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: "rgba(212, 175, 55, 0.15)",
+    marginVertical: 16,
+    marginLeft: 36,
   },
   sectionTitle: {
     fontSize: 12,
@@ -414,6 +519,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(212, 175, 55, 0.1)",
     marginLeft: 72,
   },
+  actionSection: {
+    marginTop: 32,
+    gap: 16,
+  },
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -421,7 +530,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 59, 48, 0.1)",
     paddingVertical: 16,
     borderRadius: 24,
-    marginTop: 32,
     borderWidth: 1,
     borderColor: "rgba(255, 59, 48, 0.2)",
   },
@@ -431,11 +539,24 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginLeft: 10,
   },
+  deleteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+  },
+  deleteText: {
+    color: "#FF3B30",
+    fontSize: 14,
+    fontWeight: "600",
+    marginLeft: 10,
+    opacity: 0.8,
+  },
   versionText: {
     textAlign: "center",
     fontSize: 12,
     color: COLORS.textLight,
-    marginTop: 24,
+    marginTop: 32,
     opacity: 0.5,
   },
 });

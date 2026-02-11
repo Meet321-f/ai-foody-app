@@ -134,7 +134,7 @@ const TabsLayout = () => {
   const { colors, isDarkMode } = useTheme();
 
   if (!isLoaded) return null;
-  if (!isSignedIn) return <Redirect href="/(auth)/sign-in" />;
+  if (!isSignedIn) return <Redirect href="/welcome" />;
 
   return (
     <Tabs

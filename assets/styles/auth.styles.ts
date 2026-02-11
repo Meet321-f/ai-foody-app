@@ -68,6 +68,8 @@ export const authStyles = StyleSheet.create({
   inputContainer: {
     marginBottom: 16,
     position: "relative",
+    width: "92%",
+    alignSelf: "center",
   },
   textInput: {
     backgroundColor: "rgba(255,255,255,0.08)",
@@ -78,6 +80,7 @@ export const authStyles = StyleSheet.create({
     fontSize: 15,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.15)",
+    textAlign: "left",
   },
   eyeButton: {
     position: "absolute",
@@ -94,6 +97,8 @@ export const authStyles = StyleSheet.create({
     fontWeight: "700",
   },
   authButton: {
+    width: "92%",
+    alignSelf: "center",
     borderRadius: 20,
     overflow: "hidden",
     marginBottom: 24,

@@ -63,13 +63,13 @@ const FavoritesScreen = () => {
         setRefreshing(false);
       }
     },
-    [user?.id]
+    [user?.id],
   );
 
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [loadData])
+    }, [loadData]),
   );
 
   const onRefresh = () => {

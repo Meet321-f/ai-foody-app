@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foody Store Asset Suite - Full Bundle</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold: #D4AF37;
+            --gold-bright: #FFD700;
+            --gold-deep: #B8860B;
+            --gold-soft: rgba(212, 175, 55, 0.4);
+            --dark: #000000;
+            --card: rgba(255, 255, 255, 0.03);
+            --text: #FFFFFF;
+            --text-dim: rgba(255, 255, 255, 0.6);
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            background: #080808;
+            color: var(--text);
+            font-family: 'Outfit', sans-serif;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 120px;
+            overflow-x: hidden;
+        }
+
+        /* Modern Navigation */
+        nav {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(20px);
+            padding: 10px 20px;
+            border-radius: 100px;
+            border: 1px solid var(--glass-border);
+            z-index: 1000;
+            display: flex;
+            gap: 20px;
+        }
+
+        nav a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: 0.3s;
+        }
+        nav a:hover { color: var(--gold); transform: translateY(-2px); }
+
+        .section-label {
+            align-self: center;
+            font-size: 12px;
+            font-weight: 900;
+            color: var(--gold);
+            text-transform: uppercase;
+            letter-spacing: 8px;
+            background: rgba(212,175,55,0.05);
+            padding: 15px 40px;
+            border-radius: 100px;
+            border: 1px solid var(--gold-soft);
+            box-shadow: 0 0 30px rgba(212,175,55,0.1);
+        }
+
+        .asset-wrapper {
+            position: relative;
+            box-shadow: 0 100px 200px rgba(0,0,0,1);
+            border-radius: 40px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.03);
+            transition: 0.5s;
+        }
+        .asset-wrapper:hover { transform: scale(1.02); }
+
+        /* --- MODERN SCREENSHOTS --- */
+        .screenshot {
+            width: 1200px;
+            height: 2400px;
+            background: #000;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 120px 60px;
+            background: radial-gradient(circle at 50% 10%, #111 0%, #000 100%);
+        }
+
+        .ss-header-text {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+        .ss-header-text h1 { 
+            font-size: 110px; 
+            font-weight: 900; 
+            letter-spacing: -3px;
+            background: linear-gradient(to bottom, #FFF, #CCC);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .ss-header-text p { 
+            font-size: 38px; 
+            color: var(--gold); 
+            font-weight: 300; 
+            letter-spacing: 12px;
+            text-transform: uppercase;
+            margin-top: 10px;
+        }
+
+        /* Glassmorphism Device */
+        .device {
+            width: 860px;
+            height: 1800px;
+            background: #000;
+            border-radius: 110px;
+            border: 20px solid #151515;
+            box-shadow: 0 0 0 2px #222, 0 100px 200px rgba(0,0,0,1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            padding: 100px 50px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Modern Feed Card */
+        .premium-card {
+            background: var(--glass);
+            border-radius: 50px;
+            overflow: hidden;
+            border: 1px solid var(--glass-border);
+            margin-bottom: 40px;
+            backdrop-filter: blur(30px);
+        }
+        .card-visual {
+            height: 550px;
+            background: #111;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        .card-visual img { width: 100%; height: 100%; object-fit: cover; }
+        .card-grad {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 60%);
+        }
+        .card-info { padding: 40px; }
+        .card-title { font-size: 42px; font-weight: 800; margin-bottom: 15px; }
+
+        /* Icon Glow */
+        .icon-glow {
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, var(--gold-soft) 0%, transparent 70%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        /* UI Base Elements */
+        .ui-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+        .ui-app-name { font-size: 50px; font-weight: 900; }
+        .ui-badge { background: rgba(212,175,55,0.15); border: 1px solid var(--gold-soft); color: var(--gold); padding: 10px 20px; border-radius: 30px; font-size: 14px; font-weight: 800; }
+
+        .item-card { background: var(--card); border-radius: 40px; padding: 0; margin-bottom: 30px; border: 1px solid rgba(255,255,255,0.04); overflow: hidden; }
+        .item-img { height: 400px; background: #1a1a1a; display: flex; align-items: center; justify-content: center; font-size: 100px; border-bottom: 1px solid rgba(212,175,55,0.08); }
+        .item-data { padding: 30px; }
+        .item-title { font-size: 34px; font-weight: 700; margin-bottom: 10px; }
+        .item-meta { display: flex; gap: 20px; color: var(--gold); font-weight: 700; font-size: 16px; }
+
+        /* --- SPLASH SCREEN SPECIFIC --- */
+        .splash-screen {
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+        }
+        .splash-logo { font-size: 100px; font-weight: 900; color: var(--gold); transform: scale(1.2); filter: drop-shadow(0 0 50px rgba(212,175,55,0.3)); }
+        
+        /* --- SHOPPING LIST SPECIFIC --- */
+        .shop-row { display: flex; align-items: center; padding: 25px; background: rgba(255,255,255,0.03); border-radius: 20px; margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.05); }
+        .check { width: 40px; height: 40px; border-radius: 12px; border: 2px solid var(--gold); margin-right: 25px; display: flex; align-items: center; justify-content: center; color: var(--gold); font-weight: 900; }
+
+        /* --- FAVORITES SPECIFIC --- */
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-card { height: 450px; background: var(--card); border-radius: 30px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); }
+        .grid-img { height: 70%; background: #1a1a1a; display: flex; align-items: center; justify-content: center; font-size: 60px; position: relative; }
+        .heart { position: absolute; top: 20px; right: 20px; color: #ff3b30; font-size: 30px; }
+
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="#feature">Feature</a>
+        <a href="#welcome">Welcome</a>
+        <a href="#splash">Splash</a>
+        <a href="#home">Home</a>
+        <a href="#settings">Settings</a>
+        <a href="#ai">AI Chef</a>
+        <a href="#shop">Shopping</a>
+        <a href="#fav">Favorites</a>
+    </nav>
+
+    <!-- FEATURE GRAPHIC -->
+    <div class="section-label" id="feature">Feature Graphic</div>
+    <div class="asset-wrapper">
+        <div class="feature-graphic">
+            <div class="fg-glow"></div>
+            <h1 class="fg-logo">Foody</h1>
+        </div>
+    </div>
+
+    <!-- WELCOME / ONBOARDING SCREEN -->
+    <div class="section-label" id="welcome">Store Screenshot: Welcome Screen</div>
+    <div class="asset-wrapper">
+        <div class="screenshot">
+            <div class="ss-header-text">
+                <h1>Welcome Home</h1>
+                <p>Start Your Culinary Journey</p>
+            </div>
+            <div class="device">
+                <div class="screen" style="justify-content: flex-end; align-items: center; padding-bottom: 150px; background: linear-gradient(to top, #000 40%, rgba(212,175,55,0.1) 100%);">
+                    <div style="margin-bottom: auto; margin-top: 150px; text-align: center;">
+                        <div class="splash-logo" style="transform: scale(1.5);">Foody</div>
+                        <div style="color: var(--gold); letter-spacing: 10px; font-weight: 300; margin-top: 30px;">GOURMET GOLD</div>
+                    </div>
+                    
+                    <div style="text-align: center; width: 100%;">
+                        <h2 style="font-size: 64px; font-weight: 800; margin-bottom: 20px;">Master Your Kitchen</h2>
+                        <p style="font-size: 24px; color: var(--text-dim); margin-bottom: 80px; padding: 0 40px;">Professional AI recipes, personalized shopping lists, and voice-guided cooking at your fingertips.</p>
+                        
+                        <div style="background: var(--gold); color: #000; padding: 35px; border-radius: 40px; width: 80%; margin: 0 auto; font-weight: 900; font-size: 32px; letter-spacing: 2px; box-shadow: 0 20px 40px rgba(212,175,55,0.3);">
+                            GET STARTED
+                        </div>
+                        
+                        <div style="margin-top: 40px; font-size: 20px; color: var(--text-dim);">Already have an account? <span style="color: var(--gold); font-weight: 700;">Sign In</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SPLASH SCREEN -->
+    <div class="section-label" id="splash">Store Screenshot 1: Splash</div>
+    <div class="asset-wrapper">
+        <div class="screenshot">
+            <div class="ss-header-text">
+                <h1>Instant Luxury</h1>
+                <p>Welcome to the Gold Standard</p>
+            </div>
+            <div class="device">
+                <div class="screen splash-screen">
+                    <div class="splash-logo">Foody</div>
+                    <div style="position: absolute; bottom: 80px; width: 100%; text-align: center; color: var(--gold); font-size: 14px; letter-spacing: 5px;">CHARGING GOURMET EXPERIENCE...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HOME SCREEN -->
+    <div class="section-label" id="home">Modern UX: Home Feed</div>
+    <div class="asset-wrapper">
+        <div class="screenshot">
+            <div class="ss-header-text">
+                <h1>Gourmet Feed</h1>
+                <p>Curated for the Elite</p>
+            </div>
+            <div class="device">
+                <div class="screen" style="padding: 0;">
+                    <!-- Top Navigation Bar -->
+                    <div style="padding: 100px 50px 40px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.5); backdrop-filter: blur(20px); border-bottom: 1px solid var(--glass-border);">
+                        <div style="font-size: 48px; font-weight: 900; letter-spacing: -2px;">Foody</div>
+                        <div style="width: 80px; height: 80px; border-radius: 40px; background: var(--glass); display: flex; align-items: center; justify-content: center; border: 1px solid var(--gold-soft);">
+                            <span style="font-size: 30px;">💎</span>
+                        </div>
+                    </div>
+
+                    <div style="padding: 40px 50px; flex: 1; overflow-y: scroll;">
+                        <!-- Premium Featured Card -->
+                        <div class="premium-card">
+                            <div class="card-visual">
+                                <div style="font-size: 150px;">🥘</div>
+                                <div class="card-grad"></div>
+                                <div style="position: absolute; bottom: 40px; left: 40px; right: 40px;">
+                                    <div class="ui-badge" style="display: inline-block; margin-bottom: 20px;">CHEF'S SPECIAL</div>
+                                    <h3 class="card-title">Truffle Infused Tagliatelle</h3>
+                                </div>
+                            </div>
+                            <div class="card-info" style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; gap: 30px; color: var(--gold); font-weight: 800; font-size: 18px;">
+                                    <span>25 MIN</span>
+                                    <span>ELITE LEVEL</span>
+                                </div>
+                                <div style="font-size: 40px; color: var(--gold);">♥</div>
+                            </div>
+                        </div>
+
+                        <!-- Secondary Card -->
+                        <div class="premium-card">
+                            <div class="card-visual" style="height: 400px; background: linear-gradient(45deg, #111, #000);">
+                                <div style="font-size: 120px;">🥩</div>
+                                <div class="card-grad"></div>
+                                <div style="position: absolute; bottom: 40px; left: 40px;">
+                                    <h3 style="font-size: 38px; font-weight: 800;">Wagyu Ribeye</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Tab Bar -->
+                    <div style="height: 180px; background: rgba(0,0,0,0.8); backdrop-filter: blur(30px); border-top: 1px solid var(--glass-border); display: flex; justify-content: space-around; align-items: center; padding-bottom: 40px;">
+                        <div style="text-align: center; color: var(--gold);"><div style="font-size: 40px;">🏠</div><div style="font-size: 14px; margin-top: 10px; font-weight: 800;">HOME</div></div>
+                        <div style="text-align: center; opacity: 0.3;"><div style="font-size: 40px;">✨</div><div style="font-size: 14px; margin-top: 10px; font-weight: 800;">AI</div></div>
+                        <div style="text-align: center; opacity: 0.3;"><div style="font-size: 40px;">👤</div><div style="font-size: 14px; margin-top: 10px; font-weight: 800;">YOU</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS SCREEN -->
+    <div class="section-label" id="settings">Attractive UI: Modern Settings</div>
+    <div class="asset-wrapper">
+        <div class="screenshot">
+            <div class="ss-header-text">
+                <h1>Unrivaled Control</h1>
+                <p>Personalized Luxury</p>
+            </div>
+            <div class="device">
+                <div class="screen" style="background: radial-gradient(circle at 50% 10%, #1a1a1a 0%, #000 50%); padding-top: 150px;">
+                    <!-- Luxury Profile Area -->
+                    <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 80px;">
+                        <div style="position: relative;">
+                            <div style="width: 240px; height: 240px; border-radius: 120px; background: linear-gradient(135deg, var(--gold), var(--gold-bright)); padding: 6px; box-shadow: 0 40px 80px rgba(212,175,55,0.4);">
+                                <div style="width: 100%; height: 100%; border-radius: 120px; background: #111; display: flex; align-items: center; justify-content: center; font-size: 100px;">👨‍🍳</div>
+                            </div>
+                            <div style="position: absolute; bottom: 0; right: 0; background: var(--gold-bright); width: 70px; height: 70px; border-radius: 35px; border: 8px solid #000; display: flex; align-items: center; justify-content: center; font-size: 24px;">👑</div>
+                        </div>
+                        <h2 style="margin-top: 40px; font-size: 56px; font-weight: 900; letter-spacing: -2px;">Meet Patel</h2>
+                        <div style="color: var(--gold); letter-spacing: 6px; font-weight: 800; font-size: 18px; margin-top: 10px;">PREMIUM COLLECTOR</div>
+                    </div>
+
+                    <!-- Glass Menu -->
+                    <div style="background: rgba(255,255,255,0.02); border-radius: 60px; border: 1px solid var(--glass-border); padding: 20px; backdrop-filter: blur(40px);">
+                        <div style="padding: 45px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border);">
+                            <div style="display: flex; align-items: center; gap: 30px;">
+                                <div style="font-size: 40px; opacity: 0.8;">🔒</div>
+                                <span style="font-size: 28px; font-weight: 700;">Gourmet Security</span>
+                            </div>
+                            <div style="color: var(--gold); font-size: 30px;">❯</div>
+                        </div>
+                        <div style="padding: 45px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border);">
+                            <div style="display: flex; align-items: center; gap: 30px;">
+                                <div style="font-size: 40px; opacity: 0.8;">✨</div>
+                                <span style="font-size: 28px; font-weight: 700;">AI Preferences</span>
+                            </div>
+                            <span style="background: var(--gold); color: #000; padding: 10px 25px; border-radius: 100px; font-weight: 900; font-size: 16px;">MASTER</span>
+                        </div>
+                        <div style="padding: 45px; display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 30px;">
+                                <div style="font-size: 40px; opacity: 0.8;">🎨</div>
+                                <span style="font-size: 28px; font-weight: 700;">Luxury Interface</span>
+                            </div>
+                            <div style="color: var(--gold); font-size: 22px; font-weight: 800;">Gold Silk</div>
+                        </div>
+                    </div>
+
+                    <!-- Logout / Critical -->
+                    <div style="margin-top: 60px; background: linear-gradient(to right, rgba(212,175,55,0.1), transparent); height: 140px; border-radius: 50px; border: 1px solid var(--gold-soft); display: flex; align-items: center; justify-content: center; gap: 20px;">
+                        <span style="font-size: 32px;">🚪</span>
+                        <span style="color: var(--gold); font-weight: 900; font-size: 28px; letter-spacing: 4px;">SECURE LOGOUT</span>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 40px; color: rgba(255,59,48,0.6); font-weight: 700; font-size: 20px; letter-spacing: 1px;">
+                        Purge Account Data
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI CHEF -->
+    <div class="section-label" id="ai">Store Screenshot 3: AI Intelligence</div>
+    <div class="asset-wrapper">
+        <div class="screenshot">
+            <div class="ss-header-text" style="padding: 0 100px;">
+                <h1>Ask the AI Chef</h1>
+                <p>Turn Anything into a Feast</p>
+            </div>
+            <div class="device">
+                <div class="screen" style="justify-content: center;">
+                    <div style="text-align: center; margin-bottom: 60px;">
+                        <span style="font-size: 120px;">👨‍🍳</span>
+                        <h2 style="font-size: 50px; margin-top: 30px;">What's in your fridge?</h2>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.05); padding: 40px; border-radius: 30px; border: 2px dashed var(--gold); color: #888; margin-bottom: 30px;">Input: Chicken, Tomato, Garlic...</div>
+                    <div style="background: var(--gold); color: #000; padding: 30px; border-radius: 30px; text-align: center; font-weight: 900; font-size: 30px;">GENERATE GOLDEN RECIPE</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SHOPPING LIST -->
+    <div class="section-label" id="shop">Store Screenshot 4: Shopping Helper</div>
+    <div class="asset-wrapper">
+        <div class="screenshot">
+            <div class="ss-header-text">
+                <h1>Smart Shopping</h1>
+                <p>Organize Your Ingredients</p>
+            </div>
+            <div class="device">
+                <div class="screen">
+                    <h2 style="font-size: 44px; margin-bottom: 40px;">Shopping List</h2>
+                    <div class="shop-row">
+                        <div class="check">✓</div>
+                        <div style="font-size: 26px; font-weight: 600;">Organic Saffron Threads</div>
+                    </div>
+                    <div class="shop-row">
+                        <div class="check" style="opacity: 0.3;"></div>
+                        <div style="font-size: 26px; font-weight: 600;">Prime Rib-Eye Cut</div>
+                    </div>
+                    <div class="shop-row">
+                        <div class="check" style="opacity: 0.3;"></div>
+                        <div style="font-size: 26px; font-weight: 600;">White Truffle Oil</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FAVORITES -->
+    <div class="section-label" id="fav">Store Screenshot 5: Your Vault</div>
+    <div class="asset-wrapper">
+        <div class="screenshot">
+            <div class="ss-header-text">
+                <h1>Your Favorites</h1>
+                <p>Save the Best for Later</p>
+            </div>
+            <div class="device">
+                <div class="screen">
+                    <h2 style="font-size: 44px; margin-bottom: 40px;">Saved Recipes</h2>
+                    <div class="grid">
+                        <div class="grid-card">
+                            <div class="grid-img">🍣<span class="heart">♥</span></div>
+                            <div style="padding: 15px; font-weight: 700;">Gold Sushi Roll</div>
+                        </div>
+                        <div class="grid-card">
+                            <div class="grid-img">�<span class="heart">♥</span></div>
+                            <div style="padding: 15px; font-weight: 700;">Honey Flan</div>
+                        </div>
+                        <div class="grid-card">
+                            <div class="grid-img">🍝<span class="heart">♥</span></div>
+                            <div style="padding: 15px; font-weight: 700;">Gilded Pasta</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

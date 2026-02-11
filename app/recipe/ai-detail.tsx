@@ -7,6 +7,8 @@ import {
   StyleSheet,
   Dimensions,
   Platform,
+  Modal,
+  TextInput,
 } from "react-native";
 import * as Speech from "expo-speech";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -52,6 +54,10 @@ const AiRecipeDetailScreen = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const { getToken } = useAuth();
+
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [isReporting, setIsReporting] = useState(false);
 
   useEffect(() => {
     const loadRecipe = async () => {
@@ -130,6 +136,30 @@ const AiRecipeDetailScreen = () => {
     }
   };
 
+  const submitReport = async () => {
+    if (!reportReason.trim() || !recipe) return;
+    setIsReporting(true);
+    try {
+      const token = (await getToken()) || "";
+      await MealAPI.reportRecipe(
+        recipe.id.toString(),
+        recipe.title,
+        reportReason,
+        token,
+      );
+      Alert.alert(
+        "Reported",
+        "Thank you for your feedback. Our team will review this recipe.",
+      );
+      setReportModalVisible(false);
+      setReportReason("");
+    } catch (error) {
+      Alert.alert("Error", "Could not submit report. Please try again.");
+    } finally {
+      setIsReporting(false);
+    }
+  };
+
   if (loading) return <LoadingSpinner message="Plating your AI creation..." />;
   if (!recipe)
     return (
@@ -173,8 +203,61 @@ const AiRecipeDetailScreen = () => {
                 color={isSaved ? COLORS.primary : "#FFF"}
               />
             </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setReportModalVisible(true)}
+              style={styles.navBtn}
+            >
+              <Ionicons name="flag-outline" size={20} color="#FFF" />
+            </TouchableOpacity>
           </View>
         </View>
+
+        {/* Reporting Modal */}
+        <Modal
+          visible={reportModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setReportModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Report Recipe</Text>
+              <Text style={styles.modalSub}>
+                Why are you reporting this AI recipe?
+              </Text>
+
+              <TextInput
+                style={styles.reportInput}
+                placeholder="Content is inaccurate, offensive, etc..."
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                multiline
+                value={reportReason}
+                onChangeText={setReportReason}
+              />
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  onPress={() => setReportModalVisible(false)}
+                  style={[
+                    styles.modalBtn,
+                    { backgroundColor: "rgba(255,255,255,0.05)" },
+                  ]}
+                >
+                  <Text style={{ color: "#FFF" }}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={submitReport}
+                  disabled={isReporting || !reportReason.trim()}
+                  style={[styles.modalBtn, { backgroundColor: COLORS.primary }]}
+                >
+                  <Text style={{ color: "#000", fontWeight: "900" }}>
+                    {isReporting ? "SUBMITTING..." : "SUBMIT REPORT"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -401,6 +484,54 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.7)",
     fontSize: 16,
     lineHeight: 24,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.8)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  modalContent: {
+    width: "100%",
+    backgroundColor: "#1A1A1A",
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.2)",
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: "#FFF",
+    marginBottom: 8,
+  },
+  modalSub: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.5)",
+    marginBottom: 20,
+  },
+  reportInput: {
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 12,
+    padding: 16,
+    color: "#FFF",
+    height: 120,
+    textAlignVertical: "top",
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  modalBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 

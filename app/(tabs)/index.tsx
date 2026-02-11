@@ -81,7 +81,7 @@ const HomeScreen = () => {
         // 2. Fetch Fresh Data (API) in background
         const fetchPromise = Promise.all([
           MealAPI.getCategories(),
-          MealAPI.getRandomMeals(8),
+          MealAPI.getRandomMeals(20), // Increased from 8 to 20
           MealAPI.getRandomMeal(),
         ]);
 
@@ -134,9 +134,9 @@ const HomeScreen = () => {
           // 2. Fetch fresh data from NeonDB (Limit 10 as per requirement)
           const userId = profile?.id?.toString() || "guest";
           console.log(
-            `📡 Fetching 10 Indian recipes for ${userId} from NeonDB...`,
+            `📡 Fetching 30 Indian recipes for ${userId} from NeonDB...`,
           );
-          const indianRecipes = await MealAPI.getIndianRecipes(10, userId);
+          const indianRecipes = await MealAPI.getIndianRecipes(30, userId); // Increased from 10 to 30
 
           if (indianRecipes.length === 0) {
             console.warn("⚠️ No Indian recipes returned from API");
@@ -227,6 +227,7 @@ const HomeScreen = () => {
     <View style={[homeStyles.container, { backgroundColor: "transparent" }]}>
       <SafeScreen>
         <FlatList
+          style={{ flex: 1 }}
           data={recipes}
           renderItem={({ item }) => <RecipeCard recipe={item} />}
           keyExtractor={(item) => item.id.toString()}
@@ -249,18 +250,6 @@ const HomeScreen = () => {
             <>
               {/* WELCOME SECTION */}
               <View style={homeStyles.welcomeSection}>
-                <TouchableOpacity
-                  onPress={() => router.push("/profile")}
-                  activeOpacity={0.8}
-                >
-                  <Image
-                    source={
-                      profile?.image ? { uri: profile.image } : DEFAULT_IMAGE
-                    }
-                    style={homeStyles.headerProfileImage}
-                    contentFit="cover"
-                  />
-                </TouchableOpacity>
                 <View style={homeStyles.welcomeTextContainer}>
                   <Text style={homeStyles.greetingText}>
                     Hello, {profile?.name || "Guest"} 👋
@@ -269,6 +258,25 @@ const HomeScreen = () => {
                     Explore your recipes
                   </Text>
                 </View>
+
+                {/* SETTINGS ICON */}
+                <TouchableOpacity
+                  onPress={() => router.push("/setting")}
+                  activeOpacity={0.7}
+                  style={homeStyles.headerButton}
+                >
+                  <BlurView
+                    intensity={30}
+                    tint="dark"
+                    style={homeStyles.headerButtonBlur}
+                  >
+                    <Ionicons
+                      name="settings-outline"
+                      size={22}
+                      color={COLORS.gold}
+                    />
+                  </BlurView>
+                </TouchableOpacity>
               </View>
 
               <PromoBanner />

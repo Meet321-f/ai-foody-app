@@ -29,7 +29,7 @@ const ShoppingScreen = () => {
   useFocusEffect(
     useCallback(() => {
       loadShoppingList(false);
-    }, [])
+    }, []),
   );
 
   const loadShoppingList = async (showLoading = true) => {
@@ -72,7 +72,7 @@ const ShoppingScreen = () => {
         return {
           ...group,
           items: group.items.map((item) =>
-            item.id === itemId ? { ...item, checked: !item.checked } : item
+            item.id === itemId ? { ...item, checked: !item.checked } : item,
           ),
         };
       }
@@ -105,7 +105,7 @@ const ShoppingScreen = () => {
   const totalItems = shoppingGroups.reduce((acc, g) => acc + g.items.length, 0);
   const remainingItems = shoppingGroups.reduce(
     (acc, g) => acc + g.items.filter((i) => !i.checked).length,
-    0
+    0,
   );
 
   return (

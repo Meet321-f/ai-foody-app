@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { View, StyleSheet, Dimensions, Animated, Image } from "react-native";
+import { View, StyleSheet, Dimensions, Animated, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 const { width } = Dimensions.get("window");
@@ -50,14 +50,17 @@ const CustomSplashScreen = ({
 
   return (
     <View style={styles.container}>
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: "#000000" }]} />
+      <LinearGradient
+        colors={["rgba(212,175,55,0.15)", "#000000"]}
+        style={StyleSheet.absoluteFill}
+        start={{ x: 0.5, y: 0.5 }}
+        end={{ x: 0.5, y: 1 }}
+      />
       <View style={styles.content}>
         <Animated.View style={[styles.logoContainer, animatedLogoStyle]}>
-          <Image
-            source={require("../assets/images/app-icon.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <Text style={styles.logoText}>Foody</Text>
+          <View style={styles.goldLine} />
+          <Text style={styles.loadingText}>CHARGING GOURMET EXPERIENCE...</Text>
         </Animated.View>
       </View>
     </View>
@@ -68,6 +71,7 @@ const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 9999,
+    backgroundColor: "#000",
   },
   content: {
     flex: 1,
@@ -75,14 +79,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   logoContainer: {
-    width: width * 0.8,
-    height: width * 0.8,
+    width: width,
     justifyContent: "center",
     alignItems: "center",
   },
-  logo: {
-    width: "100%",
-    height: "100%",
+  logoText: {
+    fontSize: 70,
+    fontWeight: "900",
+    color: "#D4AF37",
+    letterSpacing: -2,
+    marginBottom: 10,
+  },
+  goldLine: {
+    width: 40,
+    height: 1,
+    backgroundColor: "#D4AF37",
+    marginBottom: 20,
+    opacity: 0.6,
+  },
+  loadingText: {
+    color: "#D4AF37",
+    fontSize: 10,
+    letterSpacing: 4,
+    fontWeight: "300",
+    opacity: 0.8,
   },
 });
 

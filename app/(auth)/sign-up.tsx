@@ -48,7 +48,7 @@ const SignUpScreen = () => {
     } catch (err: any) {
       Alert.alert(
         "Error",
-        err.errors?.[0]?.message || "Failed to create account"
+        err.errors?.[0]?.message || "Failed to create account",
       );
       console.error(JSON.stringify(err, null, 2));
     } finally {
@@ -154,15 +154,6 @@ const SignUpScreen = () => {
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>
-
-                <View style={authStyles.socialRow}>
-                  <TouchableOpacity style={authStyles.socialBtn}>
-                    <Text style={authStyles.socialBtnText}>Google</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={authStyles.socialBtn}>
-                    <Text style={authStyles.socialBtnText}>Apple ID</Text>
-                  </TouchableOpacity>
-                </View>
 
                 {/* Sign In Link */}
                 <TouchableOpacity onPress={() => router.back()}>

@@ -19,14 +19,20 @@ export const homeStyles = StyleSheet.create({
     paddingBottom: 16,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12, // Added gap
+    justifyContent: "space-between",
   },
-  headerProfileImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 2,
-    borderColor: COLORS.primary,
+  headerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(212, 175, 55, 0.2)",
+  },
+  headerButtonBlur: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   welcomeTextContainer: {
     flex: 1,
@@ -126,6 +132,7 @@ export const homeStyles = StyleSheet.create({
   },
   recipesGrid: {
     gap: 16,
+    paddingBottom: 120, // Enough to clear the tab bar completely
   },
   row: {
     justifyContent: "space-between",

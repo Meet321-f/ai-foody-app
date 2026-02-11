@@ -457,4 +457,68 @@ export const MealAPI = {
       originalData: meal,
     };
   },
+
+  // Report a recipe for AI safety/content policy
+  reportRecipe: async (
+    recipeId: string,
+    recipeTitle: string,
+    reason: string,
+    token: string,
+  ) => {
+    try {
+      const { API_URL } = await import("../constants/api");
+      let url = `${API_URL}/reports`;
+      console.log(`🔍 Submitting report for recipe ${recipeId}: ${url}`);
+
+      const body = JSON.stringify({ recipeId, recipeTitle, reason });
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Report submission failed: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("❌ Error reporting recipe:", error);
+      throw error;
+    }
+  },
+
+  // GET all reports (Admin only)
+  getAdminReports: async (token: string) => {
+    try {
+      const { API_URL } = await import("../constants/api");
+      let url = `${API_URL}/admin/reports`;
+      console.log(`🔍 Fetching admin reports: ${url}`);
+
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch reports: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.data || [];
+    } catch (error) {
+      console.error("❌ Error fetching admin reports:", error);
+      throw error;
+    }
+  },
 };

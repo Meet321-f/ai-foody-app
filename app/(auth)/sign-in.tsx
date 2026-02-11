@@ -60,7 +60,7 @@ const SignInScreen = () => {
         Alert.alert("Error", "Sign in failed. Please try again.");
         console.error(
           "Unexpected status:",
-          JSON.stringify(signInAttempt, null, 2)
+          JSON.stringify(signInAttempt, null, 2),
         );
       }
     } catch (err: any) {
@@ -152,12 +152,6 @@ const SignInScreen = () => {
                   </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity style={authStyles.forgotPass}>
-                  <Text style={authStyles.forgotPassText}>
-                    Forgot Secure Key?
-                  </Text>
-                </TouchableOpacity>
-
                 <TouchableOpacity
                   style={authStyles.authButton}
                   onPress={handleSignIn}
@@ -175,15 +169,6 @@ const SignInScreen = () => {
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>
-
-                <View style={authStyles.socialRow}>
-                  <TouchableOpacity style={authStyles.socialBtn}>
-                    <Text style={authStyles.socialBtnText}>Google</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={authStyles.socialBtn}>
-                    <Text style={authStyles.socialBtnText}>Apple ID</Text>
-                  </TouchableOpacity>
-                </View>
 
                 {/* Sign Up Link */}
                 <TouchableOpacity
