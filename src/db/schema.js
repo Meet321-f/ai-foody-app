@@ -99,3 +99,13 @@ export const reportsTable = pgTable("reports", {
   status: text("status").default("pending"),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const feedbackTable = pgTable("feedback", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  userName: text("user_name"),
+  rating: integer("rating").notNull(),
+  type: text("type").notNull(), // 'bug', 'feature', 'general'
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});

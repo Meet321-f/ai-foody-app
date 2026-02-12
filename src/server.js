@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import { ENV } from "./config/env.js";
 import { db } from "./config/db.js";
-import { favoritesTable, recipesTable, commentsTable, profilesTable, coustomeRecipesTable, vegRecipesTable, nonVegRecipesTable, reportsTable } from "./db/schema.js";
+import { favoritesTable, recipesTable, commentsTable, profilesTable, coustomeRecipesTable, vegRecipesTable, nonVegRecipesTable, reportsTable, feedbackTable } from "./db/schema.js";
 import { and, eq, desc, gt, sql, asc, gte, lte, inArray, ilike } from "drizzle-orm";
 import job from "./config/cron.js";
 import { generateRecipe, getSuggestions, generateFullRecipeData, generateRecipeImage, proxyAiChat, proxyGenerateImage } from "./services/aiService.js";
@@ -625,15 +625,74 @@ app.post("/api/reports", clerkAuth, async (req, res) => {
   }
 });
 
+// Feedback System
+app.post("/api/feedback", clerkAuth, async (req, res) => {
+  try {
+    const { rating, type, message } = req.body;
+    const userId = req.auth.userId;
+
+    if (!rating || !type || !message) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // Fetch user profile info
+    const [profile] = await db.select().from(profilesTable).where(eq(profilesTable.userId, userId)).limit(1);
+
+    const newFeedback = await db
+      .insert(feedbackTable)
+      .values({
+        userId,
+        userName: profile?.name || "Foody User",
+        rating: parseInt(rating),
+        type,
+        message,
+      })
+      .returning();
+
+    res.status(201).json({ success: true, data: newFeedback[0] });
+  } catch (error) {
+    console.log("Error adding feedback", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
+/**
+ * ADMIN ENDPOINT: Fetch all feedback
+ */
+app.get("/api/admin/feedback", clerkAuth, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    // SECURITY: Replace this with your actual Clerk User ID or use session claims roles
+    const adminUserIds = ["user_2t19YV7l87fR3yH6z8X9m4Jq2"]; 
+    const isAdmin = adminUserIds.includes(userId); 
+    
+    if (!isAdmin) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const allFeedback = await db
+      .select()
+      .from(feedbackTable)
+      .orderBy(desc(feedbackTable.createdAt))
+      .limit(50); // Added limit for performance
+
+    res.status(200).json({ success: true, data: allFeedback });
+  } catch (error) {
+    console.log("Error fetching feedback", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
 /**
  * ADMIN ENDPOINT: Fetch all reports
  * In a real app, this would be restricted to specific user IDs or roles.
  */
 app.get("/api/admin/reports", clerkAuth, async (req, res) => {
   try {
-    // Basic owner check: You can replace this with your actual Clerk User ID
-    // or check sessionClaims for a 'role'
-    const isAdmin = true; // For now, we allow the request if authenticated
+    const userId = req.auth.userId;
+    // SECURITY: Replace this with your actual Clerk User ID or use session claims roles
+    const adminUserIds = ["user_2t19YV7l87fR3yH6z8X9m4Jq2"]; 
+    const isAdmin = adminUserIds.includes(userId); 
     
     if (!isAdmin) {
       return res.status(403).json({ error: "Forbidden" });
