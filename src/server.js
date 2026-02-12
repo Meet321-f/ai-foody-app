@@ -771,6 +771,12 @@ app.get("/api/recipes/user/:userId", clerkAuth, isOwner, async (req, res) => {
   }
 });
 
+// Final 404 Diagnostic Logger
+app.use((req, res) => {
+  console.log(`📡 [404] NOT FOUND: ${req.method} ${req.url}`);
+  res.status(404).json({ error: "Route not found", path: req.url, method: req.method });
+});
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on PORT: ${PORT}`);
 });
