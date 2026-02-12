@@ -3,7 +3,8 @@ import { COLORS } from "../../constants/colors";
 
 const { width, height } = Dimensions.get("window");
 const hp = (p: number) => (height * p) / 100;
-const cardWidth = (width - 48) / 2;
+const wp = (p: number) => (width * p) / 100;
+const cardWidth = (width - wp(10) - 12) / 2; // Responsive: margins + gap
 
 export const homeStyles = StyleSheet.create({
   container: {
@@ -14,7 +15,7 @@ export const homeStyles = StyleSheet.create({
     paddingBottom: 110,
   },
   welcomeSection: {
-    paddingHorizontal: 20,
+    paddingHorizontal: wp(5),
     paddingTop: 20,
     paddingBottom: 16,
     flexDirection: "row",
@@ -49,7 +50,7 @@ export const homeStyles = StyleSheet.create({
     marginTop: 2,
   },
   featuredSection: {
-    paddingHorizontal: 20,
+    paddingHorizontal: wp(5),
     marginBottom: 24,
   },
   featuredCard: {
@@ -131,12 +132,13 @@ export const homeStyles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   recipesGrid: {
-    gap: 16,
+    gap: 12,
+    paddingHorizontal: 20,
     paddingBottom: 120, // Enough to clear the tab bar completely
   },
   row: {
     justifyContent: "space-between",
-    gap: 16,
+    gap: 12,
   },
   emptyState: {
     alignItems: "center",

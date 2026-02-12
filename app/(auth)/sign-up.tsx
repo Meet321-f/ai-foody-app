@@ -155,8 +155,48 @@ const SignUpScreen = () => {
                   </LinearGradient>
                 </TouchableOpacity>
 
+                {/* Legal Links */}
+                <View style={{ marginTop: 20, alignItems: "center", gap: 8 }}>
+                  <Text
+                    style={[
+                      authStyles.footerText,
+                      { fontSize: 12, opacity: 0.6 },
+                    ]}
+                  >
+                    By creating an account, you agree to our
+                  </Text>
+                  <View style={{ flexDirection: "row", gap: 10 }}>
+                    <TouchableOpacity
+                      onPress={() => router.push("/terms-conditions")}
+                    >
+                      <Text
+                        style={[authStyles.footerLinkText, { fontSize: 12 }]}
+                      >
+                        Terms & Conditions
+                      </Text>
+                    </TouchableOpacity>
+                    <Text
+                      style={{ color: "rgba(255,255,255,0.4)", fontSize: 12 }}
+                    >
+                      |
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => router.push("/privacy-policy")}
+                    >
+                      <Text
+                        style={[authStyles.footerLinkText, { fontSize: 12 }]}
+                      >
+                        Privacy Policy
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
                 {/* Sign In Link */}
-                <TouchableOpacity onPress={() => router.back()}>
+                <TouchableOpacity
+                  onPress={() => router.back()}
+                  style={{ marginTop: 24 }}
+                >
                   <Text style={authStyles.footerText}>
                     Existing member?{" "}
                     <Text style={authStyles.footerLinkText}>Sign In</Text>

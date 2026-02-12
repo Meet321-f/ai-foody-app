@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Platform,
   Alert,
   TextInput,
+  Linking,
 } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -23,6 +24,11 @@ import { BlurView } from "expo-blur";
 import * as Haptics from "expo-haptics";
 
 const DEFAULT_IMAGE = require("../assets/images/default.png");
+
+// Internal routes are used for Privacy Policy and Terms & Conditions
+const PRIVACY_POLICY_URL = "https://meet321-f.github.io/foody-privacy/";
+const TERMS_CONDITION_URL =
+  "https://meet321-f.github.io/foody-privacy/terms.html";
 
 const SettingsScreen = () => {
   const router = useRouter();
@@ -62,6 +68,22 @@ const SettingsScreen = () => {
 
   const handleToggleNotifications = () =>
     setNotificationsEnabled((prev) => !prev);
+
+  // Safe External Link Opener
+  const openExternalLink = useCallback(async (url: string) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert("Unable to Open", "Cannot open the link at the moment.");
+      }
+    } catch (error) {
+      console.error("Link opening error:", error);
+      Alert.alert("Error", "Something went wrong while opening the link.");
+    }
+  }, []);
 
   const handlePress = async (route: string) => {
     console.log("Navigate to:", route);
@@ -256,27 +278,29 @@ const SettingsScreen = () => {
             <SettingRow
               icon="help-circle-outline"
               label="Help & Support"
-              onPress={() => handlePress("help")}
+              onPress={() => router.push("/help-support")}
               iconColor="#54A0FF"
             />
             <View style={styles.divider} />
             <SettingRow
               icon="chatbubble-ellipses-outline"
               label="Send Feedback"
-              onPress={() => handlePress("rate")}
+              onPress={() => router.push("/feedback")}
               iconColor="#5F27CD"
             />
             <View style={styles.divider} />
             <SettingRow
               icon="document-text-outline"
               label="Privacy Policy"
-              onPress={() =>
-                Alert.alert(
-                  "Privacy Policy",
-                  "Redirecting to privacy policy...",
-                )
-              }
+              onPress={() => router.push("/privacy-policy")}
               iconColor="#10AC84"
+            />
+            <View style={styles.divider} />
+            <SettingRow
+              icon="reader-outline"
+              label="Terms & Conditions"
+              onPress={() => router.push("/terms-conditions")}
+              iconColor="#F39C12"
             />
           </View>
 
@@ -292,6 +316,13 @@ const SettingsScreen = () => {
               icon="stats-chart-outline"
               label="AI Content Reports"
               onPress={() => handlePress("admin-reports")}
+              iconColor={COLORS.gold}
+            />
+            <View style={styles.divider} />
+            <SettingRow
+              icon="chatbubbles-outline"
+              label="User Feedback"
+              onPress={() => router.push("/admin/feedback")}
               iconColor={COLORS.gold}
             />
           </View>

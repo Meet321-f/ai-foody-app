@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foody - Black & Gold Luxury Home Screen</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Outfit:wght@300;400;600;800&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --black-deep: #000000;
+            --black-surface: #0a0a0a;
+            --black-card: #111111;
+            --gold-primary: #D4AF37;
+            --gold-light: #FFDF00;
+            --gold-gradient: linear-gradient(135deg, #D4AF37 0%, #F59E0B 100%);
+            --gold-border: rgba(212, 175, 55, 0.3);
+            --gold-glow: 0 10px 30px rgba(212, 175, 55, 0.2);
+            --text-gold: #D4AF37;
+            --text-white: #FFFFFF;
+            --text-muted: rgba(255, 255, 255, 0.6);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        body {
+            background: var(--black-deep);
+            color: var(--text-white);
+            padding: 60px 20px;
+            overflow-x: hidden;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 3.5rem;
+            margin-bottom: 10px;
+            background: var(--gold-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle { font-size: 1.1rem; color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase; }
+
+        .showcase-grid {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            flex-wrap: wrap;
+            max-width: 1500px;
+            margin: 0 auto;
+        }
+
+        .screen-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .screen-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            color: var(--gold-primary);
+            margin-bottom: 25px;
+            letter-spacing: 1px;
+        }
+
+        .mobile-frame {
+            width: 380px;
+            height: 800px;
+            background: #000;
+            border-radius: 50px;
+            border: 10px solid #222;
+            box-shadow: 0 50px 100px -20px rgba(0,0,0,1), 0 0 40px rgba(212, 175, 55, 0.1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .screen-content {
+            background: var(--black-deep);
+            height: 100%;
+            width: 100%;
+            padding: 30px 24px;
+            position: relative;
+        }
+
+        /* UI Elements */
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .avatar { width: 45px; height: 45px; border-radius: 23px; border: 2px solid var(--gold-primary); background: url('https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=100') center/cover; }
+        
+        .gold-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 22px;
+            background: var(--black-card);
+            border: 1px solid var(--gold-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gold-primary);
+        }
+
+        .search-bar {
+            background: var(--black-card);
+            border: 1px solid var(--gold-border);
+            padding: 14px 20px;
+            border-radius: 18px;
+            margin-bottom: 30px;
+            font-size: 14px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 24px;
+            color: var(--gold-primary);
+            margin-bottom: 20px;
+            font-weight: 900;
+        }
+
+        /* Layout 1: Royal Scroll (Luxury Cards) */
+        .royal-card {
+            width: 100%;
+            height: 380px;
+            border-radius: 35px;
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 25px;
+            box-shadow: var(--gold-glow);
+        }
+        .royal-img { width: 100%; height: 100%; background-position: center; background-size: cover; transform: scale(1); filter: grayscale(10%) contrast(110%); }
+        .royal-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.9) 100%); }
+        .royal-details { position: absolute; bottom: 0; left: 0; right: 0; padding: 25px; }
+
+        /* Layout 2: Modern Vault (Grid) */
+        .vault-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .vault-card { background: var(--black-card); border-radius: 25px; border: 1px solid var(--gold-border); overflow: hidden; height: 260px; }
+        .vault-img { height: 140px; background-size: cover; background-position: center; }
+        .vault-info { padding: 12px; }
+
+        /* Layout 3: Culinary Gallery (Minimalist Hero) */
+        .gallery-hero { 
+            height: 550px; 
+            width: 100%; 
+            border-radius: 40px; 
+            background: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=400') center/cover; 
+            margin-bottom: 25px;
+            border: 1px solid var(--gold-border);
+            position: relative;
+        }
+        .gallery-nav { display: flex; gap: 15px; overflow-x: auto; padding-bottom: 10px; }
+        .gold-pill { padding: 10px 20px; border-radius: 100px; background: var(--gold-gradient); color: #000; font-weight: 800; font-size: 12px; white-space: nowrap; }
+        .gold-pill.outline { background: transparent; border: 1px solid var(--gold-primary); color: var(--gold-primary); }
+
+        /* Series 2 Classes */
+        .luxury-glass {
+            background: rgba(212, 175, 55, 0.05);
+            border: 1px solid var(--gold-border);
+            border-radius: 30px;
+            padding: 25px;
+            backdrop-filter: blur(20px);
+        }
+        .noble-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 48px;
+            font-weight: 900;
+            line-height: 0.9;
+            margin-bottom: 40px;
+            color: var(--text-white);
+        }
+        .golden-glow-container {
+            background: radial-gradient(circle at top right, rgba(212, 175, 55, 0.1) 0%, #000 60%);
+            height: 100%;
+        }
+
+        /* Series 3 Styles */
+        .cyber-neon-border {
+            border: 1px solid var(--gold-primary);
+            box-shadow: 0 0 15px var(--gold-primary), inset 0 0 15px var(--gold-primary);
+            position: relative;
+        }
+        .cyber-neon-border::after {
+            content: ''; position: absolute; inset: -2px; border: 1px solid var(--gold-light); opacity: 0.5; filter: blur(2px);
+        }
+        .asymmetric-title {
+            writing-mode: vertical-rl;
+            text-transform: uppercase;
+            letter-spacing: 12px;
+            font-size: 10px;
+            color: var(--gold-primary);
+            opacity: 0.8;
+            position: absolute;
+            left: -10px;
+            top: 50%;
+            transform: translateY(-50%) rotate(180deg);
+        }
+        .zen-glass {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(40px);
+            border-radius: 40px;
+            border: 1px solid rgba(212, 175, 55, 0.1);
+        }
+
+        .nav-indicator { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 120px; height: 5px; background: var(--gold-border); border-radius: 5px; }
+
+        /* Animations */
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .screen-content > * { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+        .screen-content > *:nth-child(2) { animation-delay: 0.1s; }
+        .screen-content > *:nth-child(3) { animation-delay: 0.2s; }
+        .screen-content > *:nth-child(4) { animation-delay: 0.3s; }
+
+        .mobile-frame:hover { transform: scale(1.02); box-shadow: 0 60px 120px -30px rgba(0,0,0,1), 0 0 50px rgba(212, 175, 55, 0.25); }
+
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Luxury Foody Redesign</h1>
+        <p class="subtitle">Black & Gold Collection</p>
+    </header>
+
+    <div class="showcase-grid">
+        <!-- Layout 1: Royal Scroll -->
+        <div class="screen-wrapper">
+            <h2 class="screen-title">I. The Royal Scroll</h2>
+            <div class="mobile-frame">
+                <div class="screen-content">
+                    <div class="header-bar">
+                        <div>
+                            <p style="font-size: 14px; color: var(--text-muted)">Welcome, Meet</p>
+                            <h3 style="font-family: 'Playfair Display', serif; font-size: 20px; color: var(--gold-primary)">Elite Member</h3>
+                        </div>
+                        <div class="avatar"></div>
+                    </div>
+                    <div class="search-bar">
+                        <span>🔍</span> Search Premium Recipes...
+                    </div>
+                    <h2 class="section-title">Today's Specials</h2>
+                    <div class="royal-card">
+                        <div class="royal-img" style="background-image: url('https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=400');"></div>
+                        <div class="royal-overlay"></div>
+                        <div class="royal-details">
+                            <p style="color: var(--gold-primary); font-size: 12px; font-weight: 800; letter-spacing: 2px;">GOURMET SELECTION</p>
+                            <h3 style="font-family: 'Playfair Display', serif; font-size: 26px; margin: 4px 0;">Saffron Infused Steak</h3>
+                            <div style="display: flex; gap: 15px; margin-top: 10px;">
+                                <span style="font-size: 12px; color: var(--gold-primary)">★ 4.9</span>
+                                <span style="font-size: 12px; color: var(--text-muted)">45 Mins</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="nav-indicator"></div>
+            </div>
+        </div>
+
+        <!-- Layout 2: Modern Vault -->
+        <div class="screen-wrapper">
+            <h2 class="screen-title">II. The Modern Vault</h2>
+            <div class="mobile-frame">
+                <div class="screen-content">
+                    <div class="header-bar">
+                        <div class="gold-btn">☰</div>
+                        <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100" style="width: 44px; height: 44px; border-radius: 15px; border: 1px solid var(--gold-border);">
+                    </div>
+                    <h1 style="font-size: 32px; font-family: 'Outfit', sans-serif; -webkit-text-fill-color: var(--text-white); margin-bottom: 20px; font-weight: 800;">World's Finest<br><span style="color: var(--gold-primary); background: none; -webkit-text-fill-color: initial;">Flavors</span></h1>
+                    <div class="gallery-nav" style="margin-bottom: 25px;">
+                        <div class="gold-pill">All Cuisine</div>
+                        <div class="gold-pill outline">Indian</div>
+                        <div class="gold-pill outline">Italian</div>
+                    </div>
+                    <h2 class="section-title" style="font-size: 18px; text-transform: uppercase; letter-spacing: 2px;">The Grid Collection</h2>
+                    <div class="vault-grid">
+                        <div class="vault-card">
+                            <div class="vault-img" style="background-image: url('https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=200');"></div>
+                            <div class="vault-info">
+                                <h4 style="font-size: 14px; font-weight: 800;">Gold Pasta</h4>
+                                <p style="font-size: 10px; color: var(--gold-primary); margin-top: 4px;">Chef Signature</p>
+                            </div>
+                        </div>
+                        <div class="vault-card">
+                            <div class="vault-img" style="background-image: url('https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=200');"></div>
+                            <div class="vault-info">
+                                <h4 style="font-size: 14px; font-weight: 800;">Spiced Ribs</h4>
+                                <p style="font-size: 10px; color: var(--gold-primary); margin-top: 4px;">Indian Fusion</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="nav-indicator"></div>
+            </div>
+        </div>
+
+        <!-- Layout 3: Culinary Gallery -->
+        <div class="screen-wrapper">
+            <h2 class="screen-title">III. Culinary Gallery</h2>
+            <div class="mobile-frame">
+                <div class="screen-content" style="padding: 0;">
+                    <div class="gallery-hero">
+                        <div style="position: absolute; inset: 0; background: linear-gradient(360deg, rgba(0,0,0,1) 0%, transparent 60%); padding: 30px; display: flex; flex-direction: column; justify-content: flex-end;">
+                            <span style="background: var(--gold-gradient); color: #000; padding: 5px 12px; border-radius: 8px; width: fit-content; font-size: 10px; font-weight: 900; margin-bottom: 12px;">TRENDING NOW</span>
+                            <h2 style="font-family: 'Playfair Display', serif; font-size: 36px; line-height: 1;">Champagne<br>Risotto</h2>
+                            <div style="height: 2px; width: 60px; background: var(--gold-primary); margin: 20px 0;"></div>
+                            <p style="font-size: 12px; color: var(--text-muted);">An exquisite blend of tradition and luxury.</p>
+                        </div>
+                    </div>
+                    <div style="padding: 0 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3 style="font-family: 'Playfair Display', serif; font-size: 22px;">Categories</h3>
+                            <button style="background: none; border: none; color: var(--gold-primary); font-size: 12px; font-weight: 800;">VIEW ALL</button>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                            <div style="text-align: center;">
+                                <div style="width: 100%; aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--gold-border); display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 6px;">🥣</div>
+                                <span style="font-size: 10px; color: var(--text-muted)">Soups</span>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="width: 100%; aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--gold-border); display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 6px;">🍛</div>
+                                <span style="font-size: 10px; color: var(--text-muted)">Curry</span>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="width: 100%; aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--gold-border); display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 6px;">🍝</div>
+                                <span style="font-size: 10px; color: var(--text-muted)">Pasta</span>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="width: 100%; aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--gold-border); display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 6px;">🍰</div>
+                                <span style="font-size: 10px; color: var(--text-muted)">Dessert</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="nav-indicator"></div>
+            </div>
+        </div>
+    </div>
+
+    <header style="margin-top: 100px;">
+        <p class="subtitle">Series 2: The Avant-Garde Collection</p>
+    </header>
+
+    <div class="showcase-grid">
+        <!-- Layout 4: The Glass Emperor -->
+        <div class="screen-wrapper">
+            <h2 class="screen-title">IV. The Glass Emperor</h2>
+            <div class="mobile-frame" style="border-color: #D4AF37;">
+                <div class="screen-content" style="background: linear-gradient(135deg, #000 0%, #111 100%);">
+                    <div class="luxury-glass">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                            <div style="width: 50px; height: 50px; background: var(--gold-gradient); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px;">🥗</div>
+                            <div style="text-align: right;">
+                                <p style="font-size: 10px; color: var(--gold-primary); text-transform: uppercase;">Premium Tier</p>
+                                <p style="font-size: 14px; font-weight: 800;">Gold Member</p>
+                            </div>
+                        </div>
+                        <h2 style="font-family: 'Playfair Display', serif; font-size: 28px; margin-bottom: 10px;">Perfectly Baked<br>Sourdough</h2>
+                        <button style="background: var(--gold-gradient); border: none; padding: 12px 25px; border-radius: 15px; font-weight: 900; width: 100%; box-shadow: var(--gold-glow);">ORDER EXCLUSIVE</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Layout 5: The Minimalist Noble -->
+        <div class="screen-wrapper">
+            <h2 class="screen-title">V. The Minimalist Noble</h2>
+            <div class="mobile-frame">
+                <div class="screen-content" style="padding: 40px;">
+                    <h1 class="noble-text">THE<br><span style="color: var(--gold-primary)">CHEF</span><br>EDIT</h1>
+                    <div style="height: 1px; width: 100%; background: var(--gold-border); margin-bottom: 40px;"></div>
+                    <div style="margin-bottom: 40px;">
+                        <p style="font-size: 12px; color: var(--gold-primary); margin-bottom: 10px; letter-spacing: 3px;">01. SPRING COLLECTION</p>
+                        <h3 style="font-size: 18px; font-weight: 300; letter-spacing: 1px;">Classic French Onion</h3>
+                    </div>
+                    <div style="margin-bottom: 40px;">
+                        <p style="font-size: 12px; color: var(--gold-primary); margin-bottom: 10px; letter-spacing: 3px;">02. ARTISAN BREADS</p>
+                        <h3 style="font-size: 18px; font-weight: 300; letter-spacing: 1px;">Truffle Infused Rye</h3>
+                    </div>
+                    <div style="position: absolute; bottom: 60px; right: 40px;">
+                        <div style="width: 80px; height: 80px; border-radius: 50%; border: 1px solid var(--gold-primary); display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--gold-primary); font-weight: 800;">ENTER</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Layout 6: The Golden Hour -->
+        <div class="screen-wrapper">
+            <h2 class="screen-title">VI. The Golden Hour</h2>
+            <div class="mobile-frame">
+                <div class="screen-content golden-glow-container" style="padding: 0;">
+                    <div style="height: 450px; padding: 40px; justify-content: flex-end; display: flex; flex-direction: column;">
+                        <img src="https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&q=80&w=300" style="position: absolute; top: -50px; right: -50px; width: 300px; height: 300px; transform: rotate(15deg); filter: drop-shadow(0 0 30px rgba(212, 175, 55, 0.4));">
+                        
+                        <h2 style="font-family: 'Playfair Display', serif; font-size: 42px; line-height: 1; margin-bottom: 20px;">Luxe<br>Dining</h2>
+                        <p style="color: var(--gold-primary); font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px;">Exclusively curated for you</p>
+                    </div>
+                    <div style="padding: 30px; border-top: 1px solid var(--gold-border); background: rgba(0,0,0,0.8);">
+                         <div style="display: flex; gap: 20px;">
+                             <div style="flex: 1; height: 120px; border-radius: 20px; background: var(--black-card); border: 1px solid var(--gold-border); padding: 15px;">
+                                 <p style="font-size: 10px; color: var(--text-muted)">STARTERS</p>
+                                 <p style="font-size: 14px; font-weight: 800; margin-top: 8px;">Caviars & Blinis</p>
+                             </div>
+                             <div style="flex: 1; height: 120px; border-radius: 20px; background: var(--black-card); border: 1px solid var(--gold-border); padding: 15px;">
+                                 <p style="font-size: 10px; color: var(--text-muted)">MAINS</p>
+                                 <p style="font-size: 14px; font-weight: 800; margin-top: 8px;">Gold Leaf Risotto</p>
+                             </div>
+                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <header style="margin-top: 100px;">
+        <p class="subtitle">Series 3: Unique & Modern Luxury</p>
+    </header>
+
+    <div class="showcase-grid">
+        <!-- Layout 7: Cyber-Gold Neo -->
+        <div class="screen-wrapper">
+            <h2 class="screen-title">VII. Cyber-Gold Neo</h2>
+            <div class="mobile-frame">
+                <div class="screen-content" style="padding: 20px;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 30px;">
+                        <div class="cyber-neon-border" style="width: 50px; height: 50px; border-radius: 5px;"></div>
+                        <div style="flex: 1; padding: 10px;">
+                            <p style="font-size: 10px; color: var(--gold-primary)">SYSTEM READY</p>
+                            <h4 style="font-size: 16px; font-weight: 800;">Protocol: Gourmet</h4>
+                        </div>
+                    </div>
+                    <div class="cyber-neon-border" style="height: 300px; width: 100%; border-radius: 20px; padding: 20px; display: flex; flex-direction: column; justify-content: flex-end; margin-bottom: 25px;">
+                        <img src="https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&q=80&w=300" style="position: absolute; inset: 10px; width: calc(100% - 20px); height: calc(100% - 20px); object-fit: cover; border-radius: 12px; opacity: 0.6;">
+                        <div style="position: relative; z-index: 5;">
+                            <h3 style="font-size: 24px; font-weight: 900; background: #000; padding: 5px 10px; display: inline-block;">NEO DONUT</h3>
+                            <p style="color: var(--gold-primary); font-size: 12px; font-weight: 800; background: #000; padding: 2px 10px; width: fit-content;">SYNTHETIC TASTE // v1.2</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <div class="cyber-neon-border" style="flex: 1; height: 60px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900;">SCAN INGREDIENTS</div>
+                        <div class="cyber-neon-border" style="flex: 1; height: 60px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; background: var(--gold-primary); color: #000;">AI GENERATE</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Layout 8: The Asymmetric Estate -->
+        <div class="screen-wrapper">
+            <h2 class="screen-title">VIII. The Asymmetric Estate</h2>
+            <div class="mobile-frame">
+                <div class="screen-content" style="padding: 0 0 0 50px;">
+                    <div class="asymmetric-title">LUXURY COLLECTION 2026</div>
+                    <div style="padding: 40px 30px;">
+                        <h1 style="font-family: 'Playfair Display', serif; font-size: 42px; margin-bottom: 30px;">Taste<br><span style="margin-left: 20px; font-style: italic; color: var(--gold-primary);">Re-defined</span></h1>
+                        
+                        <div style="position: relative; margin-bottom: 50px;">
+                            <div style="width: 100%; height: 250px; background: url('https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&q=80&w=300') center/cover; border-radius: 20px;"></div>
+                            <div style="position: absolute; top: -20px; right: -20px; background: #000; border: 1px solid var(--gold-primary); padding: 20px; border-radius: 15px; width: 140px; box-shadow: 10px 10px 0 var(--gold-primary);">
+                                <p style="font-size: 12px; font-weight: 800;">CHEF'S CUT</p>
+                                <p style="font-size: 10px; color: var(--text-muted); margin-top: 5px;">Limited Reserve Beef</p>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 20px;">
+                             <div style="width: 60px; height: 1px; background: var(--gold-primary);"></div>
+                             <p style="font-size: 14px; font-weight: 300; letter-spacing: 2px;">SCROLL TO DISCOVER</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Layout 9: Zen Aurora -->
+        <div class="screen-wrapper">
+            <h2 class="screen-title">IX. Zen Aurora</h2>
+            <div class="mobile-frame" style="border: 1px solid #111;">
+                <div class="screen-content" style="background: radial-gradient(circle at center, #111 0%, #000 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                    <div style="width: 250px; height: 250px; position: relative; margin-bottom: 40px;">
+                        <div style="position: absolute; inset: 0; border: 2px solid var(--gold-primary); border-radius: 50%; opacity: 0.1; animation: pulse 4s infinite;"></div>
+                        <div style="position: absolute; inset: 30px; border: 1px solid var(--gold-primary); border-radius: 50%; opacity: 0.3;"></div>
+                        <img src="https://images.unsplash.com/photo-1511690656952-34342bb7c2f2?auto=format&fit=crop&q=80&w=200" style="width: 150px; height: 150px; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 1px solid var(--gold-primary);">
+                    </div>
+                    <h2 style="font-weight: 300; letter-spacing: 8px; font-size: 20px; color: var(--gold-primary); margin-bottom: 10px;">HARMONY</h2>
+                    <p style="font-size: 14px; color: var(--text-muted); padding: 0 40px;">Balanced nutrition, presented with elegance.</p>
+                    
+                    <div style="position: absolute; bottom: 60px; width: 100%; padding: 0 40px;">
+                        <div class="zen-glass" style="padding: 20px; display: flex; justify-content: space-around;">
+                            <div style="font-size: 20px;">🍯</div>
+                            <div style="font-size: 20px;">🍵</div>
+                            <div style="font-size: 20px;">🌿</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.1; }
+            50% { transform: scale(1.4); opacity: 0.3; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+    </style>
+</body>
+</html>

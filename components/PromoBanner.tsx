@@ -16,7 +16,7 @@ import { MealAPI } from "../services/mealAPI";
 import { COLORS } from "../constants/colors";
 
 const { width } = Dimensions.get("window");
-const BANNER_WIDTH = width - 40;
+const BANNER_WIDTH = width - 20; // Align with 20px side padding
 
 const PromoBanner = () => {
   const router = useRouter();
@@ -53,6 +53,7 @@ const PromoBanner = () => {
       }).start(() => {
         // Change index
         setCurrentIndex((prev) => (prev + 1) % promoRecipes.length);
+
         // Fade in
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -125,17 +126,17 @@ const PromoBanner = () => {
 
 const styles = StyleSheet.create({
   container: {
-    marginHorizontal: 20,
+    marginHorizontal: 5,
     marginTop: 10,
     marginBottom: 20,
-    height: 160,
+    height: 190,
     borderRadius: 32,
     overflow: "hidden",
     elevation: 8,
-    shadowColor: "#000",
+    shadowColor: "#000000ff",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowRadius: 7,
   },
   inner: {
     flex: 1,

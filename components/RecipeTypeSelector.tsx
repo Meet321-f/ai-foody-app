@@ -86,10 +86,10 @@ const styles = StyleSheet.create({
   blurContainer: {
     borderRadius: 25,
     overflow: "hidden",
-    borderWidth: 1,
+    borderWidth: 0,
     borderColor: "rgba(255, 255, 255, 0.1)",
     backgroundColor: "rgba(255, 255, 255, 0.05)",
-  },
+  }, // ye btn ki stying he (Indian/Other Selector Container)
   selectorWrapper: {
     flexDirection: "row",
     padding: 6,
@@ -97,11 +97,13 @@ const styles = StyleSheet.create({
   },
   option: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 20,
-  },
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.1)",
+  }, // ye btn ki stying he (Individual Option Button)
   selectedOption: {
     backgroundColor: COLORS.primary,
     shadowColor: COLORS.primary,
@@ -109,15 +111,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
-  },
+  }, // ye btn ki stying he (Selected Button Glow/Color)
   optionText: {
     color: "rgba(255, 255, 255, 0.6)",
-    fontSize: 14,
+    fontSize: 12.5,
     fontWeight: "700",
     letterSpacing: 0.3,
   },
   selectedOptionText: {
     color: "#000",
-    fontWeight: "800",
+    fontWeight: "500",
   },
 });

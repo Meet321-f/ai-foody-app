@@ -521,4 +521,68 @@ export const MealAPI = {
       throw error;
     }
   },
+
+  // Submit User Feedback
+  submitFeedback: async (
+    rating: number,
+    type: string,
+    message: string,
+    token: string,
+  ) => {
+    try {
+      const { API_URL } = await import("../constants/api");
+      let url = `${API_URL}/feedback`;
+      console.log(`🔍 Submitting feedback: ${url}`);
+
+      const body = JSON.stringify({ rating, type, message });
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Feedback submission failed: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("❌ Error submitting feedback:", error);
+      throw error;
+    }
+  },
+
+  // GET all feedback (Admin only)
+  getAdminFeedback: async (token: string) => {
+    try {
+      const { API_URL } = await import("../constants/api");
+      let url = `${API_URL}/admin/feedback`;
+      console.log(`🔍 Fetching admin feedback: ${url}`);
+
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch feedback: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.data || [];
+    } catch (error) {
+      console.error("❌ Error fetching admin feedback:", error);
+      throw error;
+    }
+  },
 };

@@ -16,7 +16,7 @@ import { COLORS } from "../constants/colors";
 import { RecipeCardProps } from "../types";
 
 const { width } = Dimensions.get("window");
-const cardWidth = (width - 48) / 2;
+const cardWidth = (width - 52) / 2;
 
 import React from "react";
 
@@ -29,7 +29,7 @@ function RecipeCard({ recipe }: RecipeCardProps) {
       width: cardWidth,
       height: 280, // Taller immersive height
       borderRadius: 30, // Extremely rounded
-      marginBottom: 16,
+      marginBottom: 12,
       backgroundColor: "transparent",
       overflow: "hidden",
       position: "relative",
