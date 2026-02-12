@@ -21,7 +21,7 @@ const start = () => {
       .on("error", (e) => {
         console.error("❌ Keep-alive ping error:", e.message);
       });
-  }, 14000); // 14 seconds
+  }, 300000); // 5 minutes (300,000 ms)
 };
 
 export default { start };

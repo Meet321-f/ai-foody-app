@@ -31,7 +31,7 @@ app.use((req, res, next) => {
 });
 
 app.get("/api/health", (req, res) => {
-  res.status(200).json({ success: true, version: "v1.4.2-ratings-debug" });
+  res.status(200).json({ success: true, version: "v1.4.3-feedback-fix" });
 });
 
 app.post("/api/favorites", clerkAuth, async (req, res) => {
@@ -635,14 +635,13 @@ app.post("/api/feedback", clerkAuth, async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // Fetch user profile info
     const [profile] = await db.select().from(profilesTable).where(eq(profilesTable.userId, userId)).limit(1);
 
     const newFeedback = await db
       .insert(feedbackTable)
       .values({
         userId,
-        userName: profile?.name || "Foody User",
+        userName: req.body.userName || profile?.name || "Foody User",
         rating: parseInt(rating),
         type,
         message,
