@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Linking,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -74,10 +75,29 @@ const FeedbackScreen = () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
 
+      const emailSubject = `Foody Feedback: ${selectedType.toUpperCase()}`;
+      const emailBody = `From: ${userName}\nRating: ${rating} Stars\n\nMessage:\n${message}`;
+      const mailtoUrl = `mailto:meettailor.dev@gmail.com?subject=${encodeURIComponent(
+        emailSubject,
+      )}&body=${encodeURIComponent(emailBody)}`;
+
       Alert.alert(
-        "Thank You!",
-        "Your feedback has been received and will help us make Foody even better.",
-        [{ text: "OK", onPress: () => router.back() }],
+        "Feedback Saved!",
+        "Your feedback has been saved to our records. Would you also like to send a copy via email for faster support?",
+        [
+          {
+            text: "Maybe Later",
+            onPress: () => router.back(),
+            style: "cancel",
+          },
+          {
+            text: "Send Email",
+            onPress: () => {
+              Linking.openURL(mailtoUrl);
+              router.back();
+            },
+          },
+        ],
       );
     } catch (error) {
       console.error("Feedback error:", error);
