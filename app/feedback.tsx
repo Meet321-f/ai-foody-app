@@ -43,6 +43,7 @@ const FeedbackScreen = () => {
   const [rating, setRating] = useState(0);
   const [selectedType, setSelectedType] = useState("general");
   const [message, setMessage] = useState("");
+  const [userName, setUserName] = useState(user?.fullName || "");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
@@ -66,7 +67,7 @@ const FeedbackScreen = () => {
         selectedType,
         message,
         token,
-        user?.fullName || undefined,
+        userName,
       );
 
       if (Platform.OS !== "web") {
@@ -186,12 +187,24 @@ const FeedbackScreen = () => {
             />
           </View>
 
-          <Text style={styles.infoNote}>
-            Submitting as:{" "}
-            <Text style={{ color: COLORS.gold }}>
-              {user?.fullName || "Guest User"}
-            </Text>
-          </Text>
+          {/* User Name field */}
+          <Text style={styles.sectionLabel}>Your Name</Text>
+          <View style={[styles.inputCard, { marginBottom: 32 }]}>
+            <BlurView
+              intensity={20}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+            />
+            <TextInput
+              style={[styles.textInput, { height: 55 }]}
+              placeholder="Your name"
+              placeholderTextColor="rgba(255,255,255,0.2)"
+              value={userName}
+              onChangeText={setUserName}
+            />
+          </View>
+
+          {/* Note removed to make space for Input field */}
 
           <TouchableOpacity
             style={[

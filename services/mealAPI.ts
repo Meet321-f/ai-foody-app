@@ -548,6 +548,11 @@ export const MealAPI = {
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          `❌ Feedback sub failed [${response.status}]:`,
+          errorText,
+        );
         throw new Error(`Feedback submission failed: ${response.status}`);
       }
 
