@@ -528,13 +528,14 @@ export const MealAPI = {
     type: string,
     message: string,
     token: string,
+    userName?: string,
   ) => {
     try {
       const { API_URL } = await import("../constants/api");
       let url = `${API_URL}/feedback`;
       console.log(`🔍 Submitting feedback: ${url}`);
 
-      const body = JSON.stringify({ rating, type, message });
+      const body = JSON.stringify({ rating, type, message, userName });
       const headers = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,

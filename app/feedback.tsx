@@ -61,7 +61,13 @@ const FeedbackScreen = () => {
     setLoading(true);
     try {
       const token = (await getToken()) || "";
-      await MealAPI.submitFeedback(rating, selectedType, message, token);
+      await MealAPI.submitFeedback(
+        rating,
+        selectedType,
+        message,
+        token,
+        user?.fullName || undefined,
+      );
 
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
