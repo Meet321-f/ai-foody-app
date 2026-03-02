@@ -109,3 +109,15 @@ export const feedbackTable = pgTable("feedback", {
   message: text("message").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+export const mocktailsTable = pgTable("mocktails", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  imageUrl: text("image_url"),
+  time: text("time"),
+  ingredients: text("ingredients"),
+  calories: text("calories"),
+  instructions: text("instructions"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+

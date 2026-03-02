@@ -101,15 +101,33 @@ app.delete("/api/favorites/:userId/:recipeId", clerkAuth, isOwner, async (req, r
 
 app.post("/api/comments", clerkAuth, async (req, res) => {
   try {
-    const { recipeId, text } = req.body;
+    const { recipeId, text, userName: bodyUserName, userEmail: bodyUserEmail } = req.body;
     const userId = req.auth.userId;
 
     if (!userId || !recipeId || !text) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // Fetch user profile info to prevent name/image spoofing
-    const [profile] = await db.select().from(profilesTable).where(eq(profilesTable.userId, userId)).limit(1);
+    // Fetch existing profile
+    let [profile] = await db.select().from(profilesTable).where(eq(profilesTable.userId, userId)).limit(1);
+
+    // Auto-create profile if it doesn't exist (using Clerk data from frontend)
+    if (!profile && bodyUserName) {
+      try {
+        const [newProfile] = await db.insert(profilesTable).values({
+          userId,
+          name: bodyUserName,
+          email: bodyUserEmail || null,
+        }).returning();
+        profile = newProfile;
+        console.log(`[Comments] Auto-created profile for user: ${userId} (${bodyUserName})`);
+      } catch (profileErr) {
+        console.warn("[Comments] Could not auto-create profile:", profileErr.message);
+      }
+    }
+
+    // Use profile name > fallback to bodyUserName > default
+    const resolvedName = profile?.name || bodyUserName || "Foody User";
 
     const newComment = await db
       .insert(commentsTable)
@@ -117,7 +135,7 @@ app.post("/api/comments", clerkAuth, async (req, res) => {
         userId,
         recipeId: recipeId,
         text,
-        userName: profile?.name || "Foody User",
+        userName: resolvedName,
       })
       .returning();
 
