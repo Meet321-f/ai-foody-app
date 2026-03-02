@@ -591,4 +591,74 @@ export const MealAPI = {
       throw error;
     }
   },
+
+  // GET comments for a recipe
+  getComments: async (recipeId: string, token?: string) => {
+    try {
+      const { API_URL } = await import("../constants/api");
+      const url = `${API_URL}/comments/${recipeId}`;
+      const headers: any = {};
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(url, { headers });
+      if (!response.ok) {
+        console.warn(`⚠️ Comments API returned status: ${response.status}`);
+        return [];
+      }
+      const data = await response.json();
+
+      // Handle different response formats
+      if (Array.isArray(data)) return data;
+      if (data.comments && Array.isArray(data.comments)) return data.comments;
+      if (data.data && Array.isArray(data.data)) return data.data;
+
+      console.log("📝 Comments data received:", data);
+      return [];
+    } catch (error) {
+      console.error("❌ Error getting comments:", error);
+      return [];
+    }
+  },
+
+  // POST a new comment
+  addComment: async (
+    recipeId: string,
+    userId: string,
+    userName: string,
+    userImage: string | null,
+    text: string,
+    token: string,
+    userEmail?: string,
+  ) => {
+    try {
+      const { API_URL } = await import("../constants/api");
+      const url = `${API_URL}/comments`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          recipeId,
+          userId,
+          userName,
+          userImage,
+          userEmail,
+          text,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to post comment: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("❌ Error adding comment:", error);
+      throw error;
+    }
+  },
 };

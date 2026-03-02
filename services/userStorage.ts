@@ -60,6 +60,63 @@ export const UserStorageService = {
   },
 
   /**
+   * Sync favorites with backend
+   */
+  syncFavoritesWithBackend: async (
+    userId: string,
+    apiUrl: string,
+    token?: string,
+  ): Promise<void> => {
+    if (!userId || !apiUrl) return;
+    try {
+      console.log(`📡 Syncing favorites with backend for ${userId}...`);
+      const headers: any = { "Content-Type": "application/json" };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${apiUrl}/favorites/${userId}`, {
+        headers,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Sync failed with status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (result.success && Array.isArray(result.data)) {
+        // Ensure data is mapped to our Recipe format if backend has different naming
+        const backendFavorites: Recipe[] = result.data.map((item: any) => ({
+          ...item,
+          // Support various image field names from different backend versions
+          image: item.image || item.image_url || item.recipeImage || item.img,
+          // Ensure ID is a string and handle potential naming variations
+          id: (item.id || item.recipeId || item._id).toString(),
+        }));
+
+        const localFavorites = await UserStorageService.getFavorites(userId);
+
+        // Merge backend favorites into local, avoiding duplicates
+        const localIds = new Set(localFavorites.map((r) => r.id.toString()));
+        const newOnes = backendFavorites.filter(
+          (r) => r.id && !localIds.has(r.id.toString()),
+        );
+
+        if (newOnes.length > 0) {
+          const updated = [...localFavorites, ...newOnes];
+          const key = `${FAVORITES_KEY_PREFIX}${userId}`;
+          await AsyncStorage.setItem(key, JSON.stringify(updated));
+          console.log(`✅ Synced ${newOnes.length} new favorites from backend`);
+        } else {
+          console.log("ℹ️ Local favorites already in sync with backend");
+        }
+      }
+    } catch (error) {
+      console.error("❌ Error syncing favorites with backend:", error);
+    }
+  },
+
+  /**
    * Check if a recipe is favorited by user
    */
   isFavorite: async (userId: string, recipeId: string): Promise<boolean> => {

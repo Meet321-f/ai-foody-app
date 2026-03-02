@@ -17,7 +17,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { useUserProfile } from "../hooks/useUserProfile";
-import { useTheme } from "../contexts/ThemeContext";
 import { COLORS } from "../constants/colors";
 import SafeScreen from "../components/SafeScreen";
 import { BlurView } from "expo-blur";
@@ -35,7 +34,6 @@ const SettingsScreen = () => {
   const { signOut } = useAuth();
   const { user } = useUser();
   const { profile, updateProfile } = useUserProfile();
-  const { isDarkMode, toggleTheme } = useTheme();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [newName, setNewName] = useState(profile?.name || "");
@@ -257,14 +255,6 @@ const SettingsScreen = () => {
               onPress={() => handlePress("language")}
               iconColor="#00D2D3"
             />
-            <View style={styles.divider} />
-            <SettingRowWithSwitch
-              icon="moon-outline"
-              label="Dark Mode"
-              value={isDarkMode}
-              onValueChange={toggleTheme}
-              iconColor="#FECA57"
-            />
           </View>
 
           {/* SUPPORT SECTION */}
@@ -316,13 +306,6 @@ const SettingsScreen = () => {
               icon="stats-chart-outline"
               label="AI Content Reports"
               onPress={() => handlePress("admin-reports")}
-              iconColor={COLORS.gold}
-            />
-            <View style={styles.divider} />
-            <SettingRow
-              icon="chatbubbles-outline"
-              label="User Feedback"
-              onPress={() => router.push("/admin/feedback")}
               iconColor={COLORS.gold}
             />
           </View>

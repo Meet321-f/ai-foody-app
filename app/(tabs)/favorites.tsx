@@ -10,7 +10,7 @@ import {
   TextStyle,
   RefreshControl,
 } from "react-native";
-import { useClerk, useUser } from "@clerk/clerk-expo";
+import { useClerk, useUser, useAuth } from "@clerk/clerk-expo";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { useEffect, useState, useCallback } from "react";
 import { API_URL } from "../../constants/api";
@@ -27,6 +27,7 @@ import { COLORS } from "../../constants/colors";
 
 const FavoritesScreen = () => {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const { colors } = useTheme();
 
   const [activeTab, setActiveTab] = useState<"favorites" | "ai">("favorites");
@@ -41,19 +42,21 @@ const FavoritesScreen = () => {
       if (!isRefresh) setLoading(true);
 
       try {
-        // 1. Load Favorites (Local Storage Priority)
+        // 1. Trigger Sync with backend to ensure data recovery after re-install
+        if (activeTab === "favorites") {
+          const token = await getToken();
+          await UserStorageService.syncFavoritesWithBackend(
+            user.id,
+            API_URL,
+            token || undefined,
+          );
+        }
+
+        // 2. Load Favorites (Local Storage Priority)
         const localFavorites = await UserStorageService.getFavorites(user.id);
         setFavoriteRecipes(localFavorites);
 
-        // Optional: Sync with backend in background if needed (skipping for now to rely on local persistence as requested)
-        /*
-        const favResponse = await fetch(`${API_URL}/favorites/${user.id}`);
-        if (favResponse.ok) {
-           // logic to merge or update local storage with backend
-        }
-        */
-
-        // 2. Load AI History (Local Storage Priority)
+        // 3. Load AI History (Local Storage Priority)
         const localAiHistory = await UserStorageService.getAiHistory(user.id);
         setAiRecipes(localAiHistory);
       } catch (error) {

@@ -3,7 +3,6 @@ import { View, StyleSheet, Dimensions, Animated, Text } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 const { width } = Dimensions.get("window");
-
 interface CustomSplashScreenProps {
   onAnimationComplete: () => void;
 }
@@ -60,7 +59,6 @@ const CustomSplashScreen = ({
         <Animated.View style={[styles.logoContainer, animatedLogoStyle]}>
           <Text style={styles.logoText}>Foody</Text>
           <View style={styles.goldLine} />
-          <Text style={styles.loadingText}>CHARGING GOURMET EXPERIENCE...</Text>
         </Animated.View>
       </View>
     </View>
@@ -96,13 +94,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#D4AF37",
     marginBottom: 20,
     opacity: 0.6,
-  },
-  loadingText: {
-    color: "#D4AF37",
-    fontSize: 10,
-    letterSpacing: 4,
-    fontWeight: "300",
-    opacity: 0.8,
   },
 });
 

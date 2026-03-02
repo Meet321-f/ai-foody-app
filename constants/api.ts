@@ -14,10 +14,24 @@ const LOCAL_IOS_URL = "http://localhost:5001/api";
 // For physical devices on the same LAN, set this in app.json or EXPO_PUBLIC_DEV_API_HOST env:
 const DEV_LAN_HOST = process.env.EXPO_PUBLIC_DEV_API_HOST;
 
+// For testing on physical devices/Wi-Fi without enabling cleartext traffic,
+// use an HTTPS tunnel (like ngrok) and paste the URL here:
+const DEV_TUNNEL_URL = "";
+
 const getDevApiUrl = () => {
-  if (DEV_LAN_HOST && DEV_LAN_HOST.trim().length > 0) {
+  // 1. If a tunnel URL is provided, prioritize it (best for Wi-Fi testing)
+  if (DEV_TUNNEL_URL && (DEV_TUNNEL_URL as string).trim().length > 0) {
+    return (DEV_TUNNEL_URL as string).endsWith("/api")
+      ? (DEV_TUNNEL_URL as string)
+      : `${DEV_TUNNEL_URL}/api`;
+  }
+
+  // 2. If EXPO_PUBLIC_DEV_API_HOST is set in environment/app.json
+  if (DEV_LAN_HOST && (DEV_LAN_HOST as string).trim().length > 0) {
     return `http://${DEV_LAN_HOST}/api`;
   }
+
+  // 3. Fallback to local machine or production
   return USE_LOCAL_BACKEND
     ? Platform.OS === "android"
       ? LOCAL_ANDROID_URL

@@ -36,16 +36,39 @@ const FEEDBACK_TYPES = [
   },
 ];
 
+import { useUserProfile } from "../hooks/useUserProfile";
+
 const FeedbackScreen = () => {
   const router = useRouter();
   const { getToken } = useAuth();
   const { user } = useUser();
+  const { profile } = useUserProfile();
 
   const [rating, setRating] = useState(0);
   const [selectedType, setSelectedType] = useState("general");
   const [message, setMessage] = useState("");
-  const [userName, setUserName] = useState(user?.fullName || "");
+  const [userName, setUserName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  // Auto-fill name from profile once it loads
+  React.useEffect(() => {
+    if (profile?.name) {
+      setUserName(profile.name);
+    } else if (user?.fullName) {
+      setUserName(user.fullName);
+    }
+  }, [profile, user]);
+
+  // Handle auto-navigation back after success message
+  React.useEffect(() => {
+    if (showSuccess) {
+      const timer = setTimeout(() => {
+        router.back();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccess]);
 
   const handleSubmit = async () => {
     if (rating === 0) {
@@ -63,13 +86,16 @@ const FeedbackScreen = () => {
     setLoading(true);
     try {
       const token = (await getToken()) || "";
-      await MealAPI.submitFeedback(
+
+      /* Attempt backend submission in the background (Non-blocking) - ON HOLD
+      MealAPI.submitFeedback(
         rating,
         selectedType,
         message,
         token,
         userName,
-      );
+      ).catch((err) => console.log("Background DB submission failed:", err));
+      */
 
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -81,30 +107,12 @@ const FeedbackScreen = () => {
         emailSubject,
       )}&body=${encodeURIComponent(emailBody)}`;
 
-      Alert.alert(
-        "Feedback Saved!",
-        "Your feedback has been saved to our records. Would you also like to send a copy via email for faster support?",
-        [
-          {
-            text: "Maybe Later",
-            onPress: () => router.back(),
-            style: "cancel",
-          },
-          {
-            text: "Send Email",
-            onPress: () => {
-              Linking.openURL(mailtoUrl);
-              router.back();
-            },
-          },
-        ],
-      );
+      // Show success message and redirect instantly (No popups)
+      setShowSuccess(true);
+      Linking.openURL(mailtoUrl);
     } catch (error) {
-      console.error("Feedback error:", error);
-      Alert.alert(
-        "Error",
-        "Failed to submit feedback. Please try again later.",
-      );
+      console.error("Feedback Logic Error:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -224,8 +232,6 @@ const FeedbackScreen = () => {
             />
           </View>
 
-          {/* Note removed to make space for Input field */}
-
           <TouchableOpacity
             style={[
               styles.submitButton,
@@ -249,6 +255,26 @@ const FeedbackScreen = () => {
             )}
           </TouchableOpacity>
         </ScrollView>
+
+        {/* Success Overlay */}
+        {showSuccess && (
+          <View style={styles.successOverlay}>
+            <BlurView
+              intensity={80}
+              tint="dark"
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={styles.successContent}>
+              <View style={styles.checkCircle}>
+                <Ionicons name="checkmark" size={60} color={COLORS.gold} />
+              </View>
+              <Text style={styles.successTitle}>Thank You!</Text>
+              <Text style={styles.successSub}>
+                Your feedback helps us make Foody even better.
+              </Text>
+            </View>
+          </View>
+        )}
       </View>
     </SafeScreen>
   );
@@ -377,6 +403,44 @@ const styles = StyleSheet.create({
     color: "#000",
     fontSize: 16,
     fontWeight: "800",
+  },
+  successOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 1000,
+  },
+  successContent: {
+    width: "80%",
+    alignItems: "center",
+    padding: 30,
+    borderRadius: 30,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(212, 175, 55, 0.3)",
+  },
+  checkCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "rgba(212, 175, 55, 0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "rgba(212, 175, 55, 0.5)",
+  },
+  successTitle: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: COLORS.gold,
+    marginBottom: 10,
+  },
+  successSub: {
+    fontSize: 16,
+    color: "rgba(255,255,255,0.7)",
+    textAlign: "center",
+    lineHeight: 24,
   },
 });
 

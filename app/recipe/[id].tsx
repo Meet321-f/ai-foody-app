@@ -30,10 +30,14 @@ import { WebView } from "react-native-webview";
 import SafeScreen from "../../components/SafeScreen";
 
 interface Comment {
-  id: string;
+  id: string | number;
   text: string;
-  user: string;
-  timestamp: string;
+  userName?: string;
+  user?: string;
+  userImage?: string | null;
+  createdAt?: string;
+  timestamp?: string;
+  userId?: string;
 }
 
 interface Recipe {
@@ -489,12 +493,14 @@ const RecipeDetailScreen = () => {
     if (!recipeId) return;
 
     try {
-      const storedComments = await AsyncStorage.getItem(`comments_${recipeId}`);
-      if (storedComments) {
-        setComments(JSON.parse(storedComments) as Comment[]);
-      } else {
-        setComments([]);
-      }
+      const token = (await getToken()) || "";
+      console.log(`📝 Loading comments for recipeId: ${recipeId}`);
+      const backendComments = await MealAPI.getComments(
+        recipeId as string,
+        token,
+      );
+      console.log(`📝 Received ${backendComments.length} comments`);
+      setComments(backendComments);
     } catch (error) {
       console.error("Error loading comments:", error);
     }
@@ -587,28 +593,41 @@ const RecipeDetailScreen = () => {
   };
 
   const addComment = async () => {
-    if (!commentInput.trim()) return;
-
-    const newComment: Comment = {
-      id: Date.now().toString(),
-      text: commentInput,
-      user: user?.firstName || "Anonymous",
-      timestamp: new Date().toISOString(),
-    };
-
-    const updatedComments = [...comments, newComment];
-    setComments(updatedComments);
-    setCommentInput("");
+    if (!commentInput.trim() || !recipeId || !user) {
+      if (!user) Alert.alert("Sign In", "Please sign in to post a comment.");
+      return;
+    }
 
     try {
-      if (recipeId) {
-        await AsyncStorage.setItem(
-          `comments_${recipeId}`,
-          JSON.stringify(updatedComments),
-        );
-      }
+      const token = (await getToken()) || "";
+      // Build the best possible display name from Clerk user fields
+      const firstName = user.firstName?.trim() || "";
+      const lastName = user.lastName?.trim() || "";
+      const fullName = user.fullName?.trim() || "";
+      const userName =
+        fullName ||
+        [firstName, lastName].filter(Boolean).join(" ") ||
+        "Foody User";
+      const userEmail = user.emailAddresses?.[0]?.emailAddress || undefined;
+
+      console.log(`📝 Posting comment as "${userName}" on recipe: ${recipeId}`);
+
+      await MealAPI.addComment(
+        recipeId as string,
+        user.id,
+        userName,
+        user.imageUrl,
+        commentInput,
+        token,
+        userEmail,
+      );
+
+      setCommentInput("");
+      // Reload comments to show the new one
+      loadComments();
     } catch (error) {
       console.error("Error saving comment:", error);
+      Alert.alert("Error", "Could not post comment. Please try again.");
     }
   };
 
@@ -975,11 +994,53 @@ const RecipeDetailScreen = () => {
               ) : (
                 comments.map((item) => (
                   <View key={item.id} style={styles.commentCard}>
-                    <Text style={styles.commentUser}>{item.user}</Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        gap: 12,
+                        alignItems: "center",
+                        marginBottom: 8,
+                      }}
+                    >
+                      {item.userImage ? (
+                        <Image
+                          source={{ uri: item.userImage }}
+                          style={{ width: 32, height: 32, borderRadius: 16 }}
+                        />
+                      ) : (
+                        <View
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 16,
+                            backgroundColor: "rgba(255,255,255,0.1)",
+                            justifyContent: "center",
+                            alignItems: "center",
+                          }}
+                        >
+                          <Ionicons
+                            name="person"
+                            size={16}
+                            color="rgba(255,255,255,0.3)"
+                          />
+                        </View>
+                      )}
+                      <View>
+                        <Text style={styles.commentUser}>
+                          {(item as any).userName ||
+                            (item as any).user ||
+                            "Anonymous"}
+                        </Text>
+                        <Text style={styles.commentDate}>
+                          {item.createdAt || (item as any).timestamp
+                            ? new Date(
+                                item.createdAt || (item as any).timestamp,
+                              ).toLocaleDateString()
+                            : "Just now"}
+                        </Text>
+                      </View>
+                    </View>
                     <Text style={styles.commentText}>{item.text}</Text>
-                    <Text style={styles.commentDate}>
-                      {new Date(item.timestamp).toLocaleDateString()}
-                    </Text>
                   </View>
                 ))
               )}

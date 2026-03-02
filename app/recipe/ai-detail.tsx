@@ -13,6 +13,7 @@ import {
 import * as Speech from "expo-speech";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
+import { Image } from "expo-image";
 import { useUser, useAuth } from "@clerk/clerk-expo";
 import { API_URL } from "../../constants/api";
 import { MealAPI } from "../../services/mealAPI";
@@ -23,6 +24,17 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { COLORS } from "../../constants/colors";
 import { Ionicons } from "@expo/vector-icons";
 import SafeScreen from "../../components/SafeScreen";
+
+interface Comment {
+  id: string | number;
+  text: string;
+  userName?: string;
+  user?: string;
+  userImage?: string | null;
+  createdAt?: string;
+  timestamp?: string;
+  userId?: string;
+}
 
 interface Recipe {
   id: number | string;
@@ -58,6 +70,9 @@ const AiRecipeDetailScreen = () => {
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [isReporting, setIsReporting] = useState(false);
+
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentInput, setCommentInput] = useState<string>("");
 
   useEffect(() => {
     const loadRecipe = async () => {
@@ -136,6 +151,55 @@ const AiRecipeDetailScreen = () => {
     }
   };
 
+  const loadComments = async () => {
+    if (!recipe?.id) return;
+    try {
+      const token = (await getToken()) || "";
+      const backendComments = await MealAPI.getComments(
+        recipe.id.toString(),
+        token,
+      );
+      setComments(backendComments);
+    } catch (error) {
+      console.error("Error loading comments:", error);
+    }
+  };
+
+  const addComment = async () => {
+    if (!commentInput.trim() || !recipe?.id || !user) {
+      if (!user) Alert.alert("Sign In", "Please sign in to post a comment.");
+      return;
+    }
+
+    try {
+      const token = (await getToken()) || "";
+      // Build the best possible display name from Clerk user fields
+      const firstName = user.firstName?.trim() || "";
+      const lastName = user.lastName?.trim() || "";
+      const fullName = user.fullName?.trim() || "";
+      const userName =
+        fullName ||
+        [firstName, lastName].filter(Boolean).join(" ") ||
+        user.emailAddresses?.[0]?.emailAddress?.split("@")?.[0] ||
+        "User";
+
+      await MealAPI.addComment(
+        recipe.id.toString(),
+        user.id,
+        userName,
+        user.imageUrl,
+        commentInput,
+        token,
+      );
+
+      setCommentInput("");
+      loadComments();
+    } catch (error) {
+      console.error("Error saving comment:", error);
+      Alert.alert("Error", "Could not post comment. Please try again.");
+    }
+  };
+
   const submitReport = async () => {
     if (!reportReason.trim() || !recipe) return;
     setIsReporting(true);
@@ -159,6 +223,12 @@ const AiRecipeDetailScreen = () => {
       setIsReporting(false);
     }
   };
+
+  useEffect(() => {
+    if (recipe?.id) {
+      loadComments();
+    }
+  }, [recipe?.id]);
 
   if (loading) return <LoadingSpinner message="Plating your AI creation..." />;
   if (!recipe)
@@ -349,6 +419,65 @@ const AiRecipeDetailScreen = () => {
             ))}
           </View>
 
+          {/* COMMENTS SECTION */}
+          <View style={styles.commentsSection}>
+            <Text style={styles.sectionTitle}>Comments</Text>
+            <View style={styles.commentInputContainer}>
+              <TextInput
+                style={styles.commentInput}
+                placeholder="Share your thoughts..."
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                value={commentInput}
+                onChangeText={setCommentInput}
+              />
+              <TouchableOpacity style={styles.postBtn} onPress={addComment}>
+                <Text style={styles.postBtnText}>Post</Text>
+              </TouchableOpacity>
+            </View>
+
+            {comments.length === 0 ? (
+              <Text style={styles.noCommentsText}>
+                Be the first to comment on this AI masterpiece.
+              </Text>
+            ) : (
+              comments.map((item) => (
+                <View key={item.id} style={styles.commentCard}>
+                  <View style={styles.commentHeader}>
+                    {item.userImage ? (
+                      <Image
+                        source={{ uri: item.userImage }}
+                        style={styles.commentAvatar}
+                      />
+                    ) : (
+                      <View style={styles.commentAvatarPlaceholder}>
+                        <Ionicons
+                          name="person"
+                          size={16}
+                          color="rgba(255,255,255,0.3)"
+                        />
+                      </View>
+                    )}
+                    <View>
+                      <Text style={styles.commentUser}>
+                        {(item as any).userName ||
+                          (item as any).user ||
+                          "Anonymous"}
+                      </Text>
+                      <Text style={styles.commentDate}>
+                        {item.createdAt || (item as any).timestamp
+                          ? new Date(
+                              item.createdAt || (item as any).timestamp,
+                            ).toLocaleDateString()
+                          : "Just now"}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.commentText}>{item.text}</Text>
+                </View>
+              ))
+            )}
+          </View>
+
           <View style={{ height: 50 }} />
         </ScrollView>
       </View>
@@ -532,6 +661,86 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
+  },
+  // Comments Styles
+  commentsSection: {
+    marginTop: 40,
+    paddingHorizontal: 0,
+  },
+  commentInputContainer: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 24,
+    marginTop: 20,
+  },
+  commentInput: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: "#FFF",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  postBtn: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    borderRadius: 15,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  postBtnText: {
+    color: "#000",
+    fontWeight: "800",
+  },
+  noCommentsText: {
+    color: "rgba(255,255,255,0.4)",
+    textAlign: "center",
+    marginTop: 10,
+  },
+  commentCard: {
+    backgroundColor: "rgba(255,255,255,0.02)",
+    padding: 16,
+    borderRadius: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
+  },
+  commentHeader: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  commentAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  commentAvatarPlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  commentUser: {
+    color: COLORS.primary,
+    fontWeight: "800",
+    fontSize: 13,
+  },
+  commentDate: {
+    color: "rgba(255,255,255,0.3)",
+    fontSize: 10,
+    marginTop: 2,
+    textTransform: "uppercase",
+  },
+  commentText: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 14,
+    lineHeight: 20,
   },
 });
 
