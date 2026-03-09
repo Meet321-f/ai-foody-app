@@ -2,8 +2,8 @@ import express from "express";
 import cors from "cors";
 import { ENV } from "./config/env.js";
 import { db } from "./config/db.js";
-import { favoritesTable, recipesTable, commentsTable, profilesTable, coustomeRecipesTable, vegRecipesTable, nonVegRecipesTable, reportsTable, feedbackTable } from "./db/schema.js";
-import { and, eq, desc, gt, sql, asc, gte, lte, inArray, ilike } from "drizzle-orm";
+import { favoritesTable, recipesTable, commentsTable, profilesTable, coustomeRecipesTable, vegRecipesTable, nonVegRecipesTable, reportsTable, feedbackTable, mocktailsTable } from "./db/schema.js";
+import { and, eq, desc, gt, sql, asc, gte, lte, inArray, ilike, not, like } from "drizzle-orm";
 import job from "./config/cron.js";
 import { generateRecipe, getSuggestions, generateFullRecipeData, generateRecipeImage, proxyAiChat, proxyGenerateImage } from "./services/aiService.js";
 import { clerkAuth, isOwner } from "./services/authService.js";
@@ -512,6 +512,87 @@ app.get("/api/indian-recipes/:id", async (req, res) => {
     res.status(200).json(recipe[0]);
   } catch (error) {
     console.log("Error fetching indian recipe by id", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
+// Mocktails (Drinks) from NeonDB — paginated, 10 per page, randomized
+app.get("/api/mocktails", async (req, res) => {
+  try {
+    const page = Math.max(0, Math.min(parseInt(req.query.page) || 0, 100));
+    const LIMIT = 10;
+    const offset = page * LIMIT;
+
+    console.log(`[Mocktails] Fetching page ${page} (offset: ${offset}, limit: ${LIMIT})`);
+
+    const mocktails = await db
+      .select()
+      .from(mocktailsTable)
+      .where(
+        not(like(mocktailsTable.imageUrl, "%chatgpt.com%"))
+      )
+      .orderBy(sql`RANDOM()`)
+      .limit(LIMIT)
+      .offset(offset);
+
+    // Get total count for client pagination
+    const countResult = await db
+      .select({ count: sql`COUNT(*)` })
+      .from(mocktailsTable)
+      .where(
+        not(like(mocktailsTable.imageUrl, "%chatgpt.com%"))
+      );
+
+    const total = Number(countResult[0]?.count || 0);
+    const hasMore = offset + LIMIT < total;
+
+    console.log(`[Mocktails] Returned ${mocktails.length} of ${total} total`);
+    res.status(200).json({ mocktails, total, page, hasMore });
+  } catch (error) {
+    console.log("Error fetching mocktails from NeonDB", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
+app.get("/api/mocktails/search", async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) {
+      return res.status(400).json({ error: "Query parameter 'q' is required" });
+    }
+
+    console.log(`[Mocktails Search] Searching NeonDB for: ${q}`);
+
+    const allResults = await db
+      .select()
+      .from(mocktailsTable)
+      .where(
+        and(
+          ilike(mocktailsTable.name, `%${q}%`),
+          not(like(mocktailsTable.imageUrl, "%chatgpt.com%"))
+        )
+      )
+      .limit(20);
+
+    console.log(`[Mocktails Search] Found ${allResults.length} results for: ${q}`);
+    res.status(200).json({ mocktails: allResults });
+  } catch (error) {
+    console.log("Error searching mocktails from NeonDB", error);
+    res.status(500).json({ error: "Something went wrong" });
+  }
+});
+
+app.get("/api/mocktails/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const mocktail = await db
+      .select()
+      .from(mocktailsTable)
+      .where(eq(mocktailsTable.id, parseInt(id)));
+
+    res.status(200).json(mocktail[0]);
+  } catch (error) {
+    console.log("Error fetching mocktail by id", error);
     res.status(500).json({ error: "Something went wrong" });
   }
 });
