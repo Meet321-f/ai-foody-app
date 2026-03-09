@@ -31,7 +31,7 @@ app.use((req, res, next) => {
 });
 
 app.get("/api/health", (req, res) => {
-  res.status(200).json({ success: true, version: "v1.4.3-feedback-fix" });
+  res.status(200).json({ success: true, version: "v1.4.4-mocktails-fix" });
 });
 
 app.post("/api/favorites", clerkAuth, async (req, res) => {
