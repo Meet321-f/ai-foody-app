@@ -52,6 +52,7 @@ export const coustomeRecipesTable = pgTable("coustome_recipes", {
   state: text("state").notNull(),
   name: text("name").notNull(),
   image: text("image"),
+  type: text("type"),
   cookTime: text("cook_time"),
   ingredients: text("ingredients"),
   calories: text("calories"),
